@@ -1,0 +1,139 @@
+diff -ruN a/usr/lib64/qt5/qml/com/jolla/keyboard/HorizontalPredictionListView.qml b/usr/lib64/qt5/qml/com/jolla/keyboard/HorizontalPredictionListView.qml
+--- a/usr/lib64/qt5/qml/com/jolla/keyboard/HorizontalPredictionListView.qml	2026-10-31 10:26:40.163422647 +0200
++++ b/usr/lib64/qt5/qml/com/jolla/keyboard/HorizontalPredictionListView.qml	2026-10-31 10:27:08.746485941 +0200
+@@ -3,6 +3,7 @@
+ 
+ import QtQuick 2.6
+ import Sailfish.Silica 1.0
++import com.meego.maliitquick 1.0
+ 
+ PredictionListView {
+     id: view
+@@ -18,10 +19,64 @@
+         view.positionViewAtBeginning()
+     }
+ 
+-    header: PasteButton {
+-        onClicked: {
+-            view.handler.paste(Clipboard.text)
+-            keyboard.expandedPaste = false
++    // Patch clipboard-history: [history button][history items when open][paste button].
++    // A history item is committed directly (after any unfinished word), so the clipboard
++    // itself is not changed.
++    header: Row {
++        height: view.height
++
++        IconButton {
++            width: Theme.itemSizeSmall
++            height: parent.height
++            visible: keyboard.pasteEnabled && keyboard.clipboardHistory.length > 1
++            icon.source: keyboard.clipboardHistoryOpen ? "image://theme/icon-m-input-remove"
++                                                       : "image://theme/icon-m-history"
++            onClicked: {
++                keyboard.clipboardHistoryOpen = !keyboard.clipboardHistoryOpen
++                keyboard.expandedPaste = false
++                view.positionViewAtBeginning()
++            }
++        }
++
++        Repeater {
++            model: keyboard.clipboardHistoryOpen ? keyboard.clipboardHistory : []
++
++            BackgroundItem {
++                width: historyLabel.width + 2 * Theme.paddingLarge
++                height: view.height
++
++                onClicked: {
++                    var handler = view.handler
++                    if (handler.preedit !== undefined && handler.preedit !== ""
++                            && typeof handler.commit === "function") {
++                        handler.commit(handler.preedit)
++                    }
++                    MInputMethodQuick.sendCommit(modelData)
++                    keyboard.clipboardHistoryOpen = false
++                    keyboard.expandedPaste = false
++                }
++
++                Label {
++                    id: historyLabel
++
++                    x: Theme.paddingLarge
++                    width: Math.min(implicitWidth, view.width / 2)
++                    height: parent.height
++                    text: modelData.replace(/\n/g, " ")
++                    font.pixelSize: Theme.fontSizeSmall
++                    verticalAlignment: Text.AlignVCenter
++                    truncationMode: TruncationMode.Fade
++                    maximumLineCount: 1
++                }
++            }
++        }
++
++        PasteButton {
++            visible: keyboard.pasteEnabled && !keyboard.clipboardHistoryOpen
++            onClicked: {
++                view.handler.paste(Clipboard.text)
++                keyboard.expandedPaste = false
++            }
+         }
+     }
+ 
+diff -ruN a/usr/lib64/qt5/qml/com/jolla/keyboard/PasteButtonBase.qml b/usr/lib64/qt5/qml/com/jolla/keyboard/PasteButtonBase.qml
+--- a/usr/lib64/qt5/qml/com/jolla/keyboard/PasteButtonBase.qml	2026-10-31 10:26:40.163460984 +0200
++++ b/usr/lib64/qt5/qml/com/jolla/keyboard/PasteButtonBase.qml	2026-10-31 10:27:08.746293731 +0200
+@@ -26,8 +26,10 @@
+         keyboard.cancelGesture()
+     }
+     onReleased: {
+-        if (popup.visible && popup.containsMouse)
++        if (popup.visible && popup.containsMouse) {
+             Clipboard.text = ""
++            keyboard.clearClipboardHistory() // patch clipboard-history
++        }
+         popup.visible = false
+     }
+     onCanceled: popup.visible = false
+diff -ruN a/usr/share/maliit/plugins/com/jolla/KeyboardBase.qml b/usr/share/maliit/plugins/com/jolla/KeyboardBase.qml
+--- a/usr/share/maliit/plugins/com/jolla/KeyboardBase.qml	2026-10-31 10:26:40.160891563 +0200
++++ b/usr/share/maliit/plugins/com/jolla/KeyboardBase.qml	2026-10-31 10:27:08.746112986 +0200
+@@ -96,6 +96,40 @@
+     // Can be changed to PreeditTestHandler to have another mode of input
+     property Item inputHandler: InputHandler {}
+ 
++    // Patch clipboard-history: the last 10 copied texts, newest first. Kept only in memory:
++    // gone when the keyboard restarts, and emptied with "Clear clipboard". The keyboard
++    // sees copies made while it is hidden too (tested on the phone).
++    property var clipboardHistory: []
++    property bool clipboardHistoryOpen
++
++    function clearClipboardHistory() {
++        clipboardHistory = []
++        clipboardHistoryOpen = false
++    }
++
++    Connections {
++        target: Clipboard
++        onTextChanged: {
++            var text = Clipboard.text
++            if (text === "")
++                return
++            var history = [text]
++            for (var i = 0; i < keyboard.clipboardHistory.length && history.length < 10; ++i) {
++                if (keyboard.clipboardHistory[i] !== text)
++                    history.push(keyboard.clipboardHistory[i])
++            }
++            keyboard.clipboardHistory = history
++        }
++    }
++
++    Connections {
++        target: MInputMethodQuick
++        onActiveChanged: {
++            if (!MInputMethodQuick.active)
++                keyboard.clipboardHistoryOpen = false
++        }
++    }
++
+     readonly property bool swipeGestureIsSafe: !releaseTimer.running
+     readonly property string sourceDirectory: "/usr/share/maliit/plugins/com/jolla/layouts/"
+ 

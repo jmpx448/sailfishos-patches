@@ -1,0 +1,67 @@
+diff -Naur a/usr/share/jolla-settings/pages/display/BrightnessSettingsSlider.qml b/usr/share/jolla-settings/pages/display/BrightnessSettingsSlider.qml
+--- a/usr/share/jolla-settings/pages/display/BrightnessSettingsSlider.qml	2026-11-05 01:08:21.091083518 +0200
++++ b/usr/share/jolla-settings/pages/display/BrightnessSettingsSlider.qml	2026-11-05 01:08:21.093083530 +0200
+@@ -16,6 +16,8 @@
+         id: slider
+ 
+         width: root.width
++        leftMargin: Math.round(Screen.width / 8) + Theme.paddingLarge
++        rightMargin: Math.round(Screen.width / 8) + Theme.paddingLarge
+         label: displaySettings.ambientLightSensorEnabled && displaySettings.autoBrightnessEnabled
+                ? //% "Adaptive brightness"
+                  qsTrId("brightness_settings-la-adaptive_brightness")
+@@ -27,7 +29,54 @@
+         }
+     }
+ 
++    // Adaptive brightness toggle in the slider's right margin, styled like the top menu toggles.
++    MouseArea {
++        id: autoButton
++
++        readonly property bool checked: displaySettings.ambientLightSensorEnabled
++                                        && displaySettings.autoBrightnessEnabled
++        readonly property bool highlighted: pressed && containsMouse
++
++        // The touch area covers the whole right margin so that a near miss does not reach the
++        // slider, which would jump to full brightness.
++        visible: deviceInfo.hasFeature(DeviceInfo.FeatureLightSensor)
++        x: slider.width - slider.rightMargin + Theme.paddingLarge
++        y: slider.y
++        width: slider.rightMargin - Theme.paddingLarge
++        height: slider.height
++
++        onClicked: {
++            displaySettings.autoBrightnessEnabled = !checked
++            if (!checked) {
++                displaySettings.ambientLightSensorEnabled = true
++            }
++        }
++
++        Rectangle {
++            id: autoCircle
++            width: Math.round(Theme.itemSizeExtraSmall * 0.7)
++            height: width
++            x: parent.width - Theme.paddingMedium - width
++            y: slider._backgroundItem.y + slider._backgroundItem.height / 2 - height / 2
++            radius: width / 2
++            opacity: autoButton.checked ? (autoButton.highlighted ? Theme.opacityHigh : Theme.opacityLow)
++                                        : (autoButton.highlighted ? Theme.opacityLow : Theme.opacityFaint)
++            color: autoButton.checked || autoButton.highlighted ? Theme.highlightColor : Theme.primaryColor
++        }
++
++        Label {
++            anchors.centerIn: autoCircle
++            text: "A"
++            font.pixelSize: Theme.fontSizeMedium
++            color: autoButton.checked || autoButton.highlighted ? Theme.highlightColor : Theme.primaryColor
++        }
++    }
++
+     DisplaySettings {
+         id: displaySettings
+     }
++
++    DeviceInfo {
++        id: deviceInfo
++    }
+ }

@@ -1,0 +1,9 @@
+{
+  "author": "jmpx448",
+  "name": "keyboard-clipboard-history",
+  "display_name": "Keyboard: clipboard history",
+  "version": "1.0.0",
+  "category": "keyboard",
+  "description": "Remembers the last 10 copied texts. A history button next to the keyboard's clipboard button shows them; tap one to paste it. Kept only in memory (cleared when the keyboard restarts) and emptied with Clear clipboard.",
+  "compatible": ["5.2.0.22"]
+}

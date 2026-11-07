@@ -1,0 +1,41 @@
+--- a/usr/share/lipstick-jolla-home-qt5/lockscreen/DeviceLockView.qml
++++ b/usr/share/lipstick-jolla-home-qt5/lockscreen/DeviceLockView.qml
+@@ -34,6 +34,38 @@
+     focus: !Desktop.startupWizardRunning
+     pasteDisabled: true
+ 
++    // Confirm the code without the OK button once it is as long as the stored code. A length
++    // the settings do not report (0) leaves the OK button as the only way, as without the patch.
++    function _codeComplete() {
++        return lockCodeSettings.currentCodeLength > 0
++                && enteredPin.length === lockCodeSettings.currentCodeLength
++                && enabled && inputEnabled && showOkButton
++                && !emergency && !enteringNewPin
++    }
++
++    onEnteredPinChanged: {
++        if (_codeComplete()) {
++            autoConfirmTimer.restart()
++        } else {
++            autoConfirmTimer.stop()
++        }
++    }
++
++    DeviceLockSettings {
++        id: lockCodeSettings
++    }
++
++    Timer {
++        id: autoConfirmTimer
++
++        interval: 150
++        onTriggered: {
++            if (pininput._codeComplete()) {
++                pininput._clickedConfirmButton()
++            }
++        }
++    }
++
+     Timer {
+         id: resetTimer
+ 

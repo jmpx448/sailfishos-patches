@@ -1,0 +1,9 @@
+{
+  "author": "jmpx448",
+  "name": "topmenu-auto-brightness",
+  "display_name": "Top menu: adaptive brightness button",
+  "version": "1.0.2",
+  "category": "homescreen",
+  "description": "Adds a round A button next to the top menu brightness slider to toggle adaptive brightness.",
+  "compatible": ["5.2.0.22"]
+}

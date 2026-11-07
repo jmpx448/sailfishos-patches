@@ -1,0 +1,32 @@
+--- a/usr/share/lipstick-jolla-home-qt5/topmenu/TopMenu.qml
++++ b/usr/share/lipstick-jolla-home-qt5/topmenu/TopMenu.qml
+@@ -16,6 +16,7 @@
+ import Nemo.Configuration 1.0
+ import org.nemomobile.devicelock 1.0
+ import org.nemomobile.systemsettings 1.0
++import Sailfish.Lipstick 1.0 as SailfishLipstick
+ import "../backgrounds"
+ 
+ SilicaFlickable {
+@@ -249,6 +250,21 @@
+                 iconSource: "image://theme/graphic-display-blank"
+                 opacity: shutdownButton.opacity
+                 onClicked: Lipstick.compositor.setDisplayOff()
++
++                SailfishLipstick.ClockItem {
++                    id: topMenuClock
++
++                    anchors.horizontalCenter: parent.horizontalCenter
++                    y: lockButton.offset
++                    color: lockButton.down ? Theme.highlightColor : Theme.primaryColor
++                    updatesEnabled: topMenu.exposed
++                    font { pixelSize: Theme.fontSizeMedium; family: Theme.fontFamily; bold: true }
++
++                    Connections {
++                        target: Lipstick.compositor
++                        onDisplayAboutToBeOn: topMenuClock.forceUpdate()
++                    }
++                }
+             }
+         }
+ 

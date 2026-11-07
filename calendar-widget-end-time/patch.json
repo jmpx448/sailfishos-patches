@@ -1,0 +1,12 @@
+{
+  "author": "jmpx448",
+  "name": "calendar-widget-end-time",
+  "display_name": "Calendar events: show end time",
+  "version": "1.1.0",
+  "category": "homescreen",
+  "description": "Shows the end time next to the start time of calendar events in the Events view (e.g. 1:30 - 8:30), and keeps timed events visible until they end instead of hiding them 15 minutes after the start. All-day events are unchanged.",
+  "compatible": [
+    "5.2.0.20",
+    "5.2.0.22"
+  ]
+}

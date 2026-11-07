@@ -1,0 +1,21 @@
+--- a/usr/lib64/qt5/qml/Sailfish/Calendar/CalendarWidgetDelegate.qml
++++ b/usr/lib64/qt5/qml/Sailfish/Calendar/CalendarWidgetDelegate.qml
+@@ -49,6 +49,7 @@
+             //% "All day"
+             text: allDay ? qsTrId("sailfish_calendar-la-all_day")
+                          : Format.formatDate(startTime, Formatter.TimeValue)
++                           + " - " + Format.formatDate(endTime, Formatter.TimeValue)
+         }
+ 
+         CalendarColorBar {
+--- a/usr/lib64/qt5/qml/Sailfish/Calendar/CalendarWidget.qml
++++ b/usr/lib64/qt5/qml/Sailfish/Calendar/CalendarWidget.qml
+@@ -25,7 +25,7 @@
+                                        : (eventsModel.totalCount == 4 ? 4 : 3)
+     property int maximumEvents: 6
+     property int maximumDaysHence: 6 // less than one week to prevent ambiguity in weekday names
+-    property int eventDisplayTime: 900
++    property int eventDisplayTime: 0 // 0 = show timed events until they end (was 900: 15 min after start)
+ 
+     property int labelLeftMargin: icon.x + icon.width + Theme.paddingMedium + Theme.paddingSmall
+     property real rightMargin: Screen.sizeCategory >= Screen.Large ? Theme.paddingLarge : Theme.horizontalPageMargin

@@ -1,0 +1,9 @@
+{
+  "author": "jmpx448",
+  "name": "topmenu-clock",
+  "display_name": "Top menu: clock above the lock",
+  "version": "1.0.1",
+  "category": "homescreen",
+  "description": "Shows the time above the lock icon in the top menu.",
+  "compatible": ["5.2.0.22"]
+}

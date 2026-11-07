@@ -1,0 +1,9 @@
+{
+  "author": "jmpx448",
+  "name": "lockscreen-auto-confirm",
+  "display_name": "Lock screen: confirm code without OK",
+  "version": "1.0.0",
+  "category": "homescreen",
+  "description": "Checks the lock code as soon as it is as long as the stored code, without pressing OK. A wrong code of that length counts as a failed attempt.",
+  "compatible": ["5.2.0.22"]
+}

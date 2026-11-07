@@ -1,0 +1,9 @@
+{
+  "author": "jmpx448",
+  "name": "android-group-summary-hide",
+  "display_name": "Notifications: hide Android group summaries",
+  "version": "1.0.1",
+  "category": "homescreen",
+  "description": "Hides the extra \"New messages\" summary notification Android apps (Proton Mail) post above their real notifications. Hidden, not closed, so the real notifications stay.",
+  "compatible": ["5.2.0.22"]
+}
