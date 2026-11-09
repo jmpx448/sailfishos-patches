@@ -1,0 +1,10 @@
+[Unit]
+Description=Tailscale toggle: keep the state in dconf current (top menu switch)
+
+[Service]
+ExecStart=/usr/bin/tailscale-toggle watch
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=post-user-session.target

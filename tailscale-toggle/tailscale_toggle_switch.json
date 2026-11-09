@@ -1,0 +1,14 @@
+{
+    "entries": [
+        {
+            "path": "system_settings/look_and_feel/topmenu/tailscale_toggle/enable_switch",
+            "type": "custom",
+            "title": "Tailscale",
+            "icon": "image://theme/icon-m-vpn",
+            "params": {
+                "source": "/usr/share/jolla-settings/pages/tailscale_toggle/EnableSwitch.qml",
+                "type": "grid"
+            }
+        }
+    ]
+}
