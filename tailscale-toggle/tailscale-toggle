@@ -1,0 +1,23 @@
+#!/bin/sh
+# Tailscale on/off for the Settings page. Runs as the user: tailscaled was set up with
+# --operator=defaultuser, so up/down need no root. The state goes to dconf, where the page
+# reads it (/apps/tailscale-toggle/state and /ip).
+# `up` repeats the flags of the original setup: without them tailscale refuses to change
+# settings that differ from the defaults.
+TS=/usr/local/bin/tailscale
+publish() {
+    state=$($TS status --json 2>/dev/null | sed -n 's/^\s*"BackendState": "\([A-Za-z]*\)".*/\1/p' | head -1)
+    [ -n "$state" ] || state=Unknown
+    ip=$($TS ip -4 2>/dev/null | head -1)
+    dconf write /apps/tailscale-toggle/state "'$state'"
+    dconf write /apps/tailscale-toggle/ip "'$ip'"
+}
+case "$1" in
+    on)  $TS up --accept-dns=false --hostname=jolla --operator=defaultuser --timeout=30s ;;
+    off) $TS down ;;
+    status) ;;
+    *) echo "usage: $0 on|off|status" >&2; exit 2 ;;
+esac
+rc=$?
+publish
+exit $rc

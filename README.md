@@ -15,6 +15,12 @@ Written for and tested on a Jolla phone with Sailfish OS 5.2.0.22.
 | [Keyboard: clipboard history](keyboard-clipboard-history/) | 1.0.0 | 5.2.0.22 | Remembers the last 10 copied texts. A history button next to the keyboard's clipboard button shows them; tap one to paste it. Kept only in memory (cleared when the keyboard restarts) and emptied with Clear clipboard. |
 | [Notifications: hide Android group summaries](android-group-summary-hide/) | 1.0.1 | 5.2.0.22 | Hides the extra "New messages" summary notification Android apps (Proton Mail) post above their real notifications. Hidden, not closed, so the real notifications stay. |
 
+## Other
+
+| Tool | Description |
+|---|---|
+| [Tailscale on/off in Settings](tailscale-toggle/) | A Settings page with a switch to turn Tailscale on and off, its state and address. Installed with its own `install.sh`, not with Patchmanager. |
+
 ## Installing
 
 These are not in the Patchmanager web catalog. Install a patch by hand as root (`devel-su`):

@@ -1,0 +1,6 @@
+[Unit]
+Description=Tailscale toggle: off
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/tailscale-toggle off

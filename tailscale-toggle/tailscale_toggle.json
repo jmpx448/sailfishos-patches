@@ -1,0 +1,14 @@
+{
+    "entries": [
+        {
+            "path": "system_settings/connectivity/tailscale_toggle",
+            "title": "Tailscale",
+            "type": "page",
+            "icon": "image://theme/icon-m-vpn",
+            "order": 1500,
+            "params": {
+                "source": "/usr/share/jolla-settings/pages/tailscale_toggle/TailscalePage.qml"
+            }
+        }
+    ]
+}

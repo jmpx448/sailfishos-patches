@@ -1,0 +1,6 @@
+[Unit]
+Description=Tailscale toggle: status
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/tailscale-toggle status
