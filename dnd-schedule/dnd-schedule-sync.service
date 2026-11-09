@@ -1,0 +1,9 @@
+[Unit]
+Description=Do not disturb schedule: reschedule timed events and apply the current state
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/dnd-schedule sync
+
+[Install]
+WantedBy=post-user-session.target

@@ -1,0 +1,326 @@
+#!/usr/bin/python3
+# Do not disturb schedule. The settings page writes the rules to dconf; "sync" turns the
+# start and end of each rule into timed events (timed also wakes up a sleeping phone).
+#
+#   dnd-schedule sync    reschedule after a change, and at the start of the session
+#   dnd-schedule start   from timed: a rule starts
+#   dnd-schedule end     from timed: a rule ends
+#   dnd-schedule led     service: LED (Inari Blue) and watch (Amazfish) off while do not disturb is
+#                        on; afterwards the LED shows what came in meanwhile, until the next unlock
+#   dnd-schedule status  print the rules and the state
+#
+# A rule: {"on": true, "days": [1..7] (1 = Monday), "start": minutes, "end": minutes}.
+# end <= start means the rule ends on the next day.
+#
+# by_schedule remembers that the schedule turned do not disturb on: only then does the end
+# of a rule turn it off. If the user turns it off by hand during a rule, it stays off.
+
+import base64
+import configparser
+import datetime
+import json
+import os
+import subprocess
+import sys
+import threading
+import time
+
+APP = "dndschedule"  # timed refuses events whose APPLICATION has a hyphen
+SELF = "/usr/bin/dnd-schedule"
+KEY_DND = "/lipstick/do_not_disturb"
+KEY_ENABLED = "/apps/dnd-schedule/enabled"
+KEY_RULES = "/apps/dnd-schedule/rules"
+KEY_BY_US = "/apps/dnd-schedule/by_schedule"
+DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+
+def dconf_read(key):
+    return subprocess.run(["dconf", "read", key], stdout=subprocess.PIPE,
+                          universal_newlines=True).stdout.strip()
+
+
+def dconf_bool(key, default):
+    v = dconf_read(key)
+    return default if v == "" else v == "true"
+
+
+def dconf_write_bool(key, value):
+    subprocess.run(["dconf", "write", key, "true" if value else "false"], check=True)
+
+
+def rules():
+    v = dconf_read(KEY_RULES)
+    # A GVariant string: '…' around the JSON (which has no apostrophes).
+    if len(v) < 2 or v[0] not in "'\"":
+        return []
+    try:
+        r = json.loads(v[1:-1])
+    except ValueError:
+        return []
+    return [x for x in r if x.get("on", True) and x.get("days") and x["start"] != x["end"]]
+
+
+def active(rule, now):
+    day = now.isoweekday()
+    t = now.hour * 60 + now.minute
+    s, e = rule["start"], rule["end"]
+    if s < e:
+        return day in rule["days"] and s <= t < e
+    yesterday = 7 if day == 1 else day - 1
+    return (day in rule["days"] and t >= s) or (yesterday in rule["days"] and t < e)
+
+
+def any_active(now):
+    return dconf_bool(KEY_ENABLED, True) and any(active(r, now) for r in rules())
+
+
+def turn_on():
+    if not dconf_bool(KEY_DND, False):
+        dconf_write_bool(KEY_DND, True)
+        dconf_write_bool(KEY_BY_US, True)
+
+
+def turn_off():
+    if dconf_bool(KEY_BY_US, False):
+        dconf_write_bool(KEY_BY_US, False)
+        dconf_write_bool(KEY_DND, False)
+
+
+def timed(*args):
+    return subprocess.run(["timedclient-qt5"] + list(args), stdout=subprocess.PIPE,
+                          stderr=subprocess.STDOUT, universal_newlines=True).stdout
+
+
+def add_event(day, minutes, command):
+    timed("-a", "whenDue;runCommand=%s %s" % (SELF, command),
+          "-r", "hour=%d;minute=%d;dayOfWeek=%s;everyDayOfMonth;everyMonth;"
+          % (minutes // 60, minutes % 60, DAYS[day - 1]),
+          "-e", "APPLICATION=" + APP)
+
+
+def sync():
+    for cookie in timed("-s", "APPLICATION=" + APP).split():
+        if cookie.isdigit():
+            timed("-c", cookie)
+    if dconf_bool(KEY_ENABLED, True):
+        for r in rules():
+            for day in r["days"]:
+                add_event(day, r["start"], "start")
+                add_event(day if r["end"] > r["start"] else day % 7 + 1, r["end"], "end")
+    # After a change, after a reboot or if the phone was off at a start or end. A by-hand
+    # off during a rule is left alone (by_schedule is still set then).
+    if any_active(datetime.datetime.now()):
+        if not dconf_bool(KEY_BY_US, False):
+            turn_on()
+    else:
+        turn_off()
+
+
+# Services stopped while do not disturb is on: (unit, setting key, default). Stopping Inari
+# Blue turns the LED off; stopping Amazfish keeps the watch from buzzing (it does not follow
+# do not disturb). Both are started again when do not disturb ends, or the setting goes off.
+QUIET_UNITS = [
+    ("inari-blue-notifier-daemon.service", "/apps/dnd-schedule/led_off", True),
+    ("harbour-amazfish.service", "/apps/dnd-schedule/watch_off", False),
+]
+
+
+INARI = "inari-blue-notifier-daemon.service"
+INARI_CONFIG = "/home/defaultuser/.config/dev.rikudou/inari-blue-notifier/config_v3.ini"
+INARI_DBUS = ["gdbus", "call", "--session", "--dest", "dev.rikudou.InariBlueNotifier",
+              "--object-path", "/dev/rikudou/InariBlueNotifier",
+              "--method", "dev.rikudou.InariBlueNotifier.PlayPatternJSON"]
+LED_OFF_PATTERN = {"name": "Off", "rise": 0, "hold": 0, "decay": 0, "off": 0, "delay": 0,
+                   "repeat": 0, "brightness": 0}
+
+lock = threading.Lock()
+missed = []        # patterns of the notifications Inari would have shown during do not disturb
+replaying = False  # the LED shows them now (Inari does not know them: it was stopped)
+
+
+def b64json(v):
+    return json.loads(base64.b64decode(v + "=" * (-len(v) % 4)).decode("utf-8"))
+
+
+def inari_pattern(package, owner):
+    """The pattern Inari Blue uses for this notification, or None. Only its own notification
+    filters (Android package / nemo owner) are followed, as configured in its app."""
+    c = configparser.RawConfigParser()
+    c.optionxform = str
+    try:
+        c.read(INARI_CONFIG)
+        for name, v in c.items("notificationFilters"):
+            f = b64json(v)
+            if f.get("enabled") and (package in (f.get("androidPackageNames") or [])
+                                     or owner in (f.get("nemoOwners") or [])):
+                if c.has_option("activePatterns", name):
+                    return b64json(c.get("activePatterns", name))
+    except (configparser.Error, ValueError, OSError):
+        pass
+    return None
+
+
+def log(msg):
+    # Events only (package names, no content); /tmp is cleared at boot.
+    try:
+        with open("/tmp/dnd-schedule-led.log", "a") as f:
+            f.write(time.strftime("%H:%M:%S ") + msg + "\n")
+    except OSError:
+        pass
+
+
+def tklock_mode():
+    out = subprocess.run(["dbus-send", "--system", "--print-reply", "--dest=com.nokia.mce",
+                          "/com/nokia/mce/request", "com.nokia.mce.request.get_tklock_mode"],
+                         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                         universal_newlines=True).stdout
+    return out[out.find('"') + 1:out.rfind('"')] if '"' in out else ""
+
+
+def play(pattern):
+    subprocess.run(INARI_DBUS + [json.dumps(pattern)], stdout=subprocess.DEVNULL,
+                   stderr=subprocess.DEVNULL)
+
+
+def led_apply():
+    global replaying
+    dnd = dconf_bool(KEY_DND, False)
+    for unit, key, default in QUIET_UNITS:
+        off = dnd and dconf_bool(key, default)
+        active = subprocess.run(["systemctl", "--user", "is-active", "--quiet", unit]).returncode == 0
+        if off and active:
+            log("stop " + unit)
+            subprocess.run(["systemctl", "--user", "stop", unit])
+        elif not off and not active:
+            subprocess.run(["systemctl", "--user", "start", unit])
+            if unit == INARI:
+                with lock:
+                    pattern = missed[-1] if missed else None
+                    missed.clear()
+                # Not when the phone is in use: the notifications are on the screen then.
+                mode = tklock_mode()
+                log("inari started, missed pattern %s, tklock %s"
+                    % (pattern.get("name") if pattern else None, mode))
+                if pattern and mode != "unlocked":
+                    time.sleep(3)  # until Inari has its LED controller
+                    play(pattern)
+                    replaying = True
+                    log("played " + pattern.get("name", "?"))
+            elif unit == "harbour-amazfish.service":
+                watch_reconnect()
+
+
+def watch_state():
+    return subprocess.run(["dbus-send", "--session", "--print-reply", "--dest=uk.co.piggz.amazfish",
+                           "/application", "uk.co.piggz.amazfish.connectionState"],
+                          stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                          universal_newlines=True).stdout
+
+
+def watch_reconnect():
+    # After a stop, the first start often stays "connected" without authenticating (as after a
+    # boot, see ~/.local/bin/bt-kello.sh); a second restart gets through.
+    for _ in range(12):
+        time.sleep(5)
+        if "authenticated" in watch_state():
+            return
+    subprocess.run(["systemctl", "--user", "restart", "harbour-amazfish.service"])
+
+
+def follow_notifications():
+    # Notify calls on the session bus (as Amazfish and Inari see them). Only the package and
+    # owner hints are read; nothing is logged.
+    mon = subprocess.Popen(["dbus-monitor", "--session",
+                            "type=method_call,interface=org.freedesktop.Notifications,member=Notify"],
+                           stdout=subprocess.PIPE, universal_newlines=True)
+    block = []
+
+    def handle(lines):
+        hints = {}
+        for i, line in enumerate(lines[:-1]):
+            t = line.strip()
+            if t in ('string "x-nemo-origin-package"', 'string "x-nemo-owner"'):
+                v = lines[i + 1].strip()  # variant             string "…"
+                if '"' in v:
+                    hints[t[8:-1]] = v[v.index('"') + 1:v.rindex('"')]
+        global replaying
+        pattern = inari_pattern(hints.get("x-nemo-origin-package"), hints.get("x-nemo-owner"))
+        if not pattern:
+            return
+        if dconf_bool(KEY_DND, False) and dconf_bool("/apps/dnd-schedule/led_off", True):
+            log("missed: %s %s" % (hints.get("x-nemo-origin-package"), pattern.get("name")))
+            with lock:
+                missed.append(pattern)
+        else:
+            # Inari shows this one itself; the unlock must not turn its LED off.
+            replaying = False
+
+    # The last argument of Notify (int32 expire_timeout) ends the call: handle it right away,
+    # not when the next message comes.
+    for line in mon.stdout:
+        if not line.startswith(" "):
+            block = [line] if "member=Notify" in line else []
+        elif block:
+            block.append(line)
+            if line.startswith("   int32 "):
+                handle(block)
+                block = []
+    os._exit(1)  # dbus-monitor ended: let systemd restart the whole service
+
+
+def follow_unlock():
+    # The missed-notification LED goes off once the phone is unlocked: they have been seen.
+    global replaying
+    mon = subprocess.Popen(["dbus-monitor", "--system",
+                            "type=signal,interface=com.nokia.mce.signal,member=tklock_mode_ind"],
+                           stdout=subprocess.PIPE, universal_newlines=True)
+    for line in mon.stdout:
+        if 'string "unlocked"' in line and replaying:
+            log("unlocked: LED off")
+            replaying = False
+            play(LED_OFF_PATTERN)
+    os._exit(1)  # dbus-monitor ended: let systemd restart the whole service
+
+
+def led():
+    for f in (follow_notifications, follow_unlock):
+        threading.Thread(target=f, daemon=True).start()
+    led_apply()
+    # dconf watch prints the key and the new value on each change; just re-read the keys.
+    watch = subprocess.Popen(["dconf", "watch", "/"], stdout=subprocess.PIPE, universal_newlines=True)
+    for line in watch.stdout:
+        if line.strip() == KEY_DND or line.strip() in [k for _, k, _ in QUIET_UNITS]:
+            led_apply()
+    sys.exit("dconf watch ended")
+
+
+def main():
+    cmd = sys.argv[1] if len(sys.argv) > 1 else "status"
+    if cmd == "sync":
+        sync()
+    elif cmd == "start":
+        if dconf_bool(KEY_ENABLED, True):
+            turn_on()
+            # Already on by hand: still ours to turn off at the end, as on Android.
+            dconf_write_bool(KEY_BY_US, True)
+    elif cmd == "end":
+        # timed can fire a moment early; another rule may continue right after this one.
+        if not any_active(datetime.datetime.now() + datetime.timedelta(seconds=30)):
+            turn_off()
+    elif cmd == "led":
+        led()
+    elif cmd == "status":
+        print("enabled:", dconf_bool(KEY_ENABLED, True))
+        print("rules:", json.dumps(rules()))
+        print("do_not_disturb:", dconf_bool(KEY_DND, False),
+              " by_schedule:", dconf_bool(KEY_BY_US, False),
+              " active now:", any_active(datetime.datetime.now()))
+        for unit, key, default in QUIET_UNITS:
+            print(key.rsplit("/", 1)[1] + ":", dconf_bool(key, default), unit)
+        print("timed events:", " ".join(timed("-s", "APPLICATION=" + APP).split()))
+    else:
+        sys.exit("usage: dnd-schedule sync|start|end|led|status")
+
+
+if __name__ == "__main__":
+    main()

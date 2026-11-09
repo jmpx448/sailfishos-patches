@@ -1,0 +1,14 @@
+{
+    "entries": [
+        {
+            "path": "system_settings/look_and_feel/dnd_schedule",
+            "title": "Älä häiritse -ajastus",
+            "type": "page",
+            "icon": "image://theme/icon-m-do-not-disturb",
+            "order": 251,
+            "params": {
+                "source": "/usr/share/jolla-settings/pages/dnd_schedule/DndSchedulePage.qml"
+            }
+        }
+    ]
+}
