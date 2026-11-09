@@ -1,0 +1,50 @@
+--- a/usr/lib64/qt5/qml/Sailfish/Calendar/CalendarWidget.qml
++++ b/usr/lib64/qt5/qml/Sailfish/Calendar/CalendarWidget.qml
+@@ -134,6 +134,17 @@
+     }
+ 
+     Item {
++        id: weekInfo
++
++        // ISO 8601 week number (weeks start on Monday, week 1 contains the year's first Thursday)
++        function isoWeek(date) {
++            var d = new Date(date.getFullYear(), date.getMonth(), date.getDate())
++            d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7)
++            var week1 = new Date(d.getFullYear(), 0, 4)
++            return 1 + Math.round(((d - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7)
++        }
++        property int currentWeek: isoWeek(eventsModel.startDate)
++
+         visible: eventsModel.count > 0
+         HighlightImage {
+             id: icon
+@@ -141,6 +152,18 @@
+             source: "image://theme/icon-lock-calendar"
+             x: Theme.horizontalPageMargin
+         }
++        Label {
++            anchors {
++                top: icon.bottom
++                topMargin: Theme.paddingSmall
++                horizontalCenter: icon.horizontalCenter
++            }
++            horizontalAlignment: Text.AlignHCenter
++            lineHeight: 0.85
++            font.pixelSize: Theme.fontSizeExtraSmall
++            color: Theme.highlightColor
++            text: "vko\n" + weekInfo.currentWeek
++        }
+     }
+ 
+     Repeater {
+@@ -171,7 +194,9 @@
+                 truncationMode: TruncationMode.Fade
+                 font.pixelSize: Theme.fontSizeSmall
+                 color: Theme.highlightColor
+-                text: showHeader ? dateLabel : ""
++                property int week: weekInfo.isoWeek(delegate.isToday ? eventsModel.startDate : startTime)
++                // the current week is shown under the icon; later weeks are named in the heading
++                text: showHeader ? dateLabel + (week !== weekInfo.currentWeek ? " (vko " + week + ")" : "") : ""
+             }
+ 
+             CalendarWidgetDelegate {

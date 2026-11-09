@@ -9,6 +9,7 @@ Written for and tested on a Jolla phone with Sailfish OS 5.2.0.22.
 | Patch | Version | Sailfish OS | Description |
 |---|---|---|---|
 | [Calendar events: show end time](calendar-widget-end-time/) | 1.1.0 | 5.2.0.20, 5.2.0.22 | Shows the end time next to the start time of calendar events in the Events view (e.g. 1:30 - 8:30), and keeps timed events visible until they end instead of hiding them 15 minutes after the start. All-day events are unchanged. |
+| [Calendar events: week number](calendar-widget-week-number/) | 1.1.1 | 5.2.0.22 | Shows the current ISO week number under the calendar icon of the Events view (vko 46), and names the week in the day headings only when the list continues into a later week, e.g. Monday (vko 47). The abbreviation is Finnish (viikko). |
 | [Top menu: clock above the lock](topmenu-clock/) | 1.0.1 | 5.2.0.22 | Shows the time above the lock icon in the top menu. |
 | [Top menu: adaptive brightness button](topmenu-auto-brightness/) | 1.0.2 | 5.2.0.22 | Adds a round A button next to the top menu brightness slider to toggle adaptive brightness. |
 | [Lock screen: confirm code without OK](lockscreen-auto-confirm/) | 1.0.0 | 5.2.0.22 | Checks the lock code as soon as it is as long as the stored code, without pressing OK. A wrong code of that length counts as a failed attempt. |
