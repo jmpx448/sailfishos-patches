@@ -24,6 +24,25 @@ Written for and tested on a Jolla phone with Sailfish OS 5.2.0.22.
 
 ## Installing
 
+### RPM packages
+
+Each patch and tool is also an RPM on the [Releases](https://github.com/jmpx448/sailfishos-patches/releases)
+page (noarch). Install as root (`devel-su`):
+
+```sh
+rpm -Uvh sfos-patch-topmenu-clock-1.0.1-1.noarch.rpm
+```
+
+- **Patches** (`sfos-patch-<name>`) need Patchmanager. After installing, enable the patch in
+  Settings → Patchmanager. Removing the package (`rpm -e`) unapplies the patch first.
+- **Tools** (`sfos-tailscale-toggle`, `sfos-dnd-schedule`): afterwards, as the user,
+  `systemctl --user daemon-reload` (see each tool's README for what else to start).
+
+`rpm/build-rpms.sh` builds them into `dist/` (needs `rpmbuild`; xz payload, as the phone's rpm 4.16
+does not read zstd).
+
+### By hand
+
 These are not in the Patchmanager web catalog. Install a patch by hand as root (`devel-su`):
 
 ```sh
