@@ -12,3 +12,87 @@
      Loader {
          id: debugWindow
  
+--- a/usr/lib64/qt5/qml/com/jolla/camera/settings/QrPage.qml
++++ b/usr/lib64/qt5/qml/com/jolla/camera/settings/QrPage.qml
+@@ -7,10 +7,33 @@
+ import QtQuick 2.0
+ import Sailfish.Silica 1.0
+ import Sailfish.Silica.private 1.0 as SilicaPrivate
++import Nemo.Configuration 1.0
+ 
+ Page {
+     id: root
+-    property alias text: label.plainText
++    property string text
++    // Patch nfc-wifi: a Wi-Fi QR code (WIFI:...) is shown without the password
++    // and can be handed to the home screen, which asks whether to connect.
++    readonly property bool isWifi: /^WIFI:/i.test(text)
++
++    ConfigurationValue {
++        id: wifiRequest
++        key: "/apps/sfos-nfc-wifi/qr-request"
++    }
++
++    // Set by the home screen when Connect was pressed in its dialog: close this page.
++    ConfigurationValue {
++        id: wifiResult
++        property bool waiting
++        key: "/apps/sfos-nfc-wifi/qr-result"
++        onValueChanged: {
++            if (waiting && value && String(value).indexOf("connected") === 0) {
++                waiting = false
++                if (root.status === PageStatus.Active)
++                    pageStack.pop()
++            }
++        }
++    }
+ 
+     SilicaPrivate.BackgroundRectangle {
+         anchors.fill: parent
+@@ -26,7 +49,8 @@
+             id: column
+ 
+             property int internalPadding: Math.max(flickable.height
+-                                                   - header.height - label.height - button.height - Theme.paddingLarge*2,
++                                                   - header.height - label.height - button.height - Theme.paddingLarge*2
++                                                   - (root.isWifi ? wifiButton.height + Theme.paddingLarge : 0),
+                                                    Theme.paddingLarge*2) / 2
+ 
+             width: parent.width
+@@ -45,6 +69,10 @@
+             LinkedLabel {
+                 id: label
+ 
++                plainText: root.isWifi
++                           ? root.text.replace(/([;:]P:)((?:\\.|[^;])*)/i, "$1••••••")
++                           : root.text
++
+                 x: Theme.horizontalPageMargin
+                 width: parent.width - 2*x
+                 color: highlighted ? Theme.highlightColor : Theme.primaryColor
+@@ -59,6 +87,25 @@
+             }
+ 
+             Button {
++                id: wifiButton
++
++                visible: root.isWifi
++                text: Qt.locale().name.indexOf("fi") === 0 ? "Yhdistä WLAN-verkkoon" : "Connect to Wi-Fi"
++                preferredWidth: button.preferredWidth
++                anchors.horizontalCenter: parent.horizontalCenter
++                onClicked: {
++                    wifiResult.waiting = true
++                    wifiRequest.value = root.text
++                }
++            }
++
++            Item {
++                visible: root.isWifi
++                width: 1
++                height: Theme.paddingLarge
++            }
++
++            Button {
+                 id: button
+ 
+                 //% "Copy"

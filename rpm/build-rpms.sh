@@ -9,6 +9,7 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 DIST="$ROOT/dist"
 TOOLS_VERSION=1.0.0
+NFC_WIFI_VERSION=1.1.0
 mkdir -p "$DIST"
 
 build() { # spec-file
@@ -138,6 +139,59 @@ install -D -m 644 \$S/DndSchedulePage.qml %{buildroot}/usr/share/jolla-settings/
 /usr/share/jolla-settings/pages/dnd_schedule/DndSchedulePage.qml
 EOF2
     ;;
+    nfc-wifi) cat <<EOF2
+Name:       sfos-nfc-wifi
+Version:    $NFC_WIFI_VERSION
+Release:    1
+Summary:    Join a Wi-Fi network from an NFC tag or QR code, after asking
+License:    MIT
+URL:        https://github.com/jmpx448/sailfishos-patches
+BuildArch:  noarch
+Requires:   patchmanager
+Requires:   nfcd
+
+%description
+Touching an NFC tag with a Wi-Fi network (Wi-Fi Simple Configuration record),
+or reading a Wi-Fi QR code with the Camera, asks whether to connect and adds
+the network. A handler in the home screen, loaded by the included Patchmanager
+patch "Wi-Fi from an NFC tag or QR code", which also adds a Connect to Wi-Fi
+button to the Camera's QR code page: enable it in Settings > Patchmanager
+after installing.
+
+%install
+S=%{src}/nfc-wifi
+install -D -m 644 \$S/files/NfcWifiHandler.qml %{buildroot}/usr/share/sfos-nfc-wifi/NfcWifiHandler.qml
+install -D -m 644 \$S/files/NfcWifiDialog.qml %{buildroot}/usr/share/sfos-nfc-wifi/NfcWifiDialog.qml
+install -D -m 644 \$S/files/sfos-nfc-wifi-dbus.conf %{buildroot}/etc/dbus-1/system.d/sfos-nfc-wifi.conf
+install -D -m 644 \$S/files/sfos-nfc-wifi-handler.conf %{buildroot}/etc/nfcd/ndef-handlers/sfos-nfc-wifi.conf
+install -D -m 644 \$S/patch/patch.json %{buildroot}/usr/share/patchmanager/patches/nfc-wifi/patch.json
+install -D -m 644 \$S/patch/unified_diff.patch %{buildroot}/usr/share/patchmanager/patches/nfc-wifi/unified_diff.patch
+
+%post
+gdbus call --system -d org.freedesktop.DBus -o /org/freedesktop/DBus -m org.freedesktop.DBus.ReloadConfig >/dev/null 2>&1 || true
+systemctl try-restart nfcd >/dev/null 2>&1 || true
+
+%preun
+if [ "\$1" -eq 0 ] && [ -x /usr/sbin/patchmanager ]; then
+    /usr/sbin/patchmanager -u nfc-wifi || true
+fi
+
+%postun
+if [ "\$1" -eq 0 ]; then
+    gdbus call --system -d org.freedesktop.DBus -o /org/freedesktop/DBus -m org.freedesktop.DBus.ReloadConfig >/dev/null 2>&1 || true
+    systemctl try-restart nfcd >/dev/null 2>&1 || true
+fi
+
+%files
+%dir /usr/share/sfos-nfc-wifi
+/usr/share/sfos-nfc-wifi/*.qml
+%config /etc/dbus-1/system.d/sfos-nfc-wifi.conf
+%config /etc/nfcd/ndef-handlers/sfos-nfc-wifi.conf
+%dir /usr/share/patchmanager/patches/nfc-wifi
+/usr/share/patchmanager/patches/nfc-wifi/patch.json
+/usr/share/patchmanager/patches/nfc-wifi/unified_diff.patch
+EOF2
+    ;;
     *) echo "unknown: $1" >&2; return 1 ;;
     esac
 }
@@ -148,7 +202,7 @@ if [ ${#ITEMS[@]} -eq 0 ]; then
         n=$(basename "$d")
         [ -f "$d/patch.json" ] && [ -f "$d/unified_diff.patch" ] && ITEMS+=("$n")
     done
-    ITEMS+=(tailscale-toggle dnd-schedule)
+    ITEMS+=(tailscale-toggle dnd-schedule nfc-wifi)
 fi
 SPECS=$(mktemp -d)
 trap 'rm -rf "$SPECS" "$DIST/build" "$DIST/buildroot"' EXIT

@@ -11,4 +11,4 @@ install -D -m 644 patch/unified_diff.patch /usr/share/patchmanager/patches/nfc-w
 gdbus call --system -d org.freedesktop.DBus -o /org/freedesktop/DBus -m org.freedesktop.DBus.ReloadConfig >/dev/null
 systemctl restart nfcd
 systemctl restart dbus-org.SfietKonstantin.patchmanager.service
-echo "Installed. Enable \"NFC: join Wi-Fi from a tag\" in Settings → Patchmanager."
+echo "Installed. Enable \"Wi-Fi from an NFC tag or QR code\" in Settings → Patchmanager."

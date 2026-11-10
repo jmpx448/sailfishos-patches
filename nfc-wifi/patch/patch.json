@@ -1,10 +1,10 @@
 {
   "author": "jmpx448",
   "name": "nfc-wifi",
-  "display_name": "NFC: join Wi-Fi from a tag",
-  "version": "1.0.0",
+  "display_name": "Wi-Fi from an NFC tag or QR code",
+  "version": "1.1.0",
   "category": "homescreen",
-  "description": "Loads the sfos-nfc-wifi handler in the home screen: touching an NFC tag with a Wi-Fi network (Wi-Fi Simple Configuration record) asks whether to connect, and adds the network. Needs the sfos-nfc-wifi package.",
+  "description": "Touching an NFC tag with a Wi-Fi network, or reading a Wi-Fi QR code with the Camera, asks whether to connect and adds the network. Loads the sfos-nfc-wifi handler in the home screen and adds a Connect to Wi-Fi button to the Camera's QR code page, which hides the password. Needs the sfos-nfc-wifi package.",
   "compatible": [
     "5.2.0.22"
   ]
