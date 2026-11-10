@@ -14,6 +14,7 @@ Written for and tested on a Jolla phone with Sailfish OS 5.2.0.22.
 | [Top menu: adaptive brightness button](topmenu-auto-brightness/) | 1.0.2 | 5.2.0.22 | Adds a round A button next to the top menu brightness slider to toggle adaptive brightness. |
 | [Lock screen: confirm code without OK](lockscreen-auto-confirm/) | 1.0.0 | 5.2.0.22 | Checks the lock code as soon as it is as long as the stored code, without pressing OK. A wrong code of that length counts as a failed attempt. |
 | [Keyboard: clipboard history](keyboard-clipboard-history/) | 1.0.0 | 5.2.0.22 | Remembers the last 10 copied texts. A history button next to the keyboard's clipboard button shows them; tap one to paste it. Kept only in memory (cleared when the keyboard restarts) and emptied with Clear clipboard. |
+| [Do not disturb: grey screen](dnd-grayscale/) | 1.0.0 | 5.2.0.22 | Shows the whole screen in greyscale while Do not disturb is on, like the bedtime mode on Android phones. Follows the Do not disturb switch and schedules; turn it off without unapplying with `dconf write /desktop/lipstick-jolla-home/dnd_grayscale false`. |
 | [Notifications: hide Android group summaries](android-group-summary-hide/) | 1.0.1 | 5.2.0.22 | Hides the extra "New messages" summary notification Android apps (Proton Mail) post above their real notifications. Hidden, not closed, so the real notifications stay. |
 
 ## Other

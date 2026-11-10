@@ -1,0 +1,11 @@
+{
+  "author": "jmpx448",
+  "name": "dnd-grayscale",
+  "display_name": "Do not disturb: grey screen",
+  "version": "1.0.0",
+  "category": "homescreen",
+  "description": "Shows the whole screen in greyscale while Do not disturb is on, like the bedtime mode on Android phones. Turn it off without unapplying: dconf write /desktop/lipstick-jolla-home/dnd_grayscale false",
+  "compatible": [
+    "5.2.0.22"
+  ]
+}

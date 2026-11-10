@@ -1,0 +1,63 @@
+--- a/usr/share/lipstick-jolla-home-qt5/compositor.qml
++++ b/usr/share/lipstick-jolla-home-qt5/compositor.qml
+@@ -637,6 +637,10 @@
+     LayersParent {
+         id: layersParent
+ 
++        // Patch dnd-grayscale: grey screen while Do not disturb is on
++        layer.enabled: grayscaleDnd.active
++        layer.effect: grayscaleEffect
++
+         // Disable opening of top menu by dragging when home is in housekeeping mode
+         property bool homeHouseKeeping: switcherLayer.housekeeping || eventsLayer.housekeeping
+ 
+@@ -1507,6 +1511,10 @@
+     Item {
+         id: notificationLayer
+ 
++        // Patch dnd-grayscale
++        layer.enabled: grayscaleDnd.active
++        layer.effect: grayscaleEffect
++
+         property alias contentItem: notificationLayer
+         property alias overlayItem: notificationLayer
+         property int __compositor_is_layer  // Identifies this as a layer to OverlayLayer.qml
+@@ -2040,6 +2048,38 @@
+         }
+     }
+ 
++    // Patch dnd-grayscale: while Do not disturb is on, the layers above
++    // are drawn through this effect. Turn off without unapplying:
++    // dconf write /desktop/lipstick-jolla-home/dnd_grayscale false
++    QtObject {
++        id: grayscaleDnd
++        readonly property bool active: doNotDisturbValue.value === true && grayscaleSetting.value !== false
++    }
++    ConfigurationValue {
++        id: doNotDisturbValue
++        key: "/lipstick/do_not_disturb"
++        defaultValue: false
++    }
++    ConfigurationValue {
++        id: grayscaleSetting
++        key: "/desktop/lipstick-jolla-home/dnd_grayscale"
++        defaultValue: true
++    }
++    Component {
++        id: grayscaleEffect
++        ShaderEffect {
++            fragmentShader: "
++                varying highp vec2 qt_TexCoord0;
++                uniform sampler2D source;
++                uniform lowp float qt_Opacity;
++                void main() {
++                    lowp vec4 c = texture2D(source, qt_TexCoord0);
++                    lowp float g = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
++                    gl_FragColor = vec4(g, g, g, c.a) * qt_Opacity;
++                }"
++        }
++    }
++
+     Rectangle {
+         id: dimmingRectangle
+ 
