@@ -1,0 +1,11 @@
+{
+  "author": "jmpx448",
+  "name": "nfc-wifi",
+  "display_name": "NFC: join Wi-Fi from a tag",
+  "version": "1.0.0",
+  "category": "homescreen",
+  "description": "Loads the sfos-nfc-wifi handler in the home screen: touching an NFC tag with a Wi-Fi network (Wi-Fi Simple Configuration record) asks whether to connect, and adds the network. Needs the sfos-nfc-wifi package.",
+  "compatible": [
+    "5.2.0.22"
+  ]
+}

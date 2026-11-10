@@ -1,0 +1,14 @@
+--- a/usr/share/lipstick-jolla-home-qt5/compositor.qml
++++ b/usr/share/lipstick-jolla-home-qt5/compositor.qml
+@@ -2140,6 +2140,11 @@
+         }
+     }
+ 
++    // Patch nfc-wifi: handler for Wi-Fi NFC tags (sfos-nfc-wifi package)
++    Loader {
++        source: "file:///usr/share/sfos-nfc-wifi/NfcWifiHandler.qml"
++    }
++
+     Loader {
+         id: debugWindow
+ 
