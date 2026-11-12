@@ -131,6 +131,8 @@ ln -s ../dnd-schedule-sync.service %{buildroot}/usr/lib/systemd/user/post-user-s
 ln -s ../dnd-schedule-led.service %{buildroot}/usr/lib/systemd/user/post-user-session.target.wants/dnd-schedule-led.service
 install -D -m 644 \$S/dnd_schedule.json %{buildroot}/usr/share/jolla-settings/entries/dnd_schedule.json
 install -D -m 644 \$S/DndSchedulePage.qml %{buildroot}/usr/share/jolla-settings/pages/dnd_schedule/DndSchedulePage.qml
+install -D -m 644 \$S/translations/sfos-dnd-schedule-fi.qm %{buildroot}/usr/share/translations/sfos-dnd-schedule-fi.qm
+install -D -m 644 \$S/translations/sfos-dnd-schedule_eng_en.qm %{buildroot}/usr/share/translations/sfos-dnd-schedule_eng_en.qm
 
 %files
 /usr/bin/dnd-schedule
@@ -141,6 +143,8 @@ install -D -m 644 \$S/DndSchedulePage.qml %{buildroot}/usr/share/jolla-settings/
 /usr/share/jolla-settings/entries/dnd_schedule.json
 %dir /usr/share/jolla-settings/pages/dnd_schedule
 /usr/share/jolla-settings/pages/dnd_schedule/DndSchedulePage.qml
+/usr/share/translations/sfos-dnd-schedule-fi.qm
+/usr/share/translations/sfos-dnd-schedule_eng_en.qm
 EOF2
     ;;
     nfc-wifi) cat <<EOF2

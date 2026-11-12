@@ -1,7 +1,8 @@
 # Do not disturb schedule
 
-A page in Settings → Look and feel ("Älä häiritse -ajastus") that turns do not disturb on and off
-on a schedule. The texts are in Finnish.
+A page in Settings → Look and feel ("Do not disturb schedule", in Finnish "Älä häiritse -ajastus")
+that turns do not disturb on and off on a schedule. The texts are in Finnish when the phone language
+is Finnish, otherwise in English.
 
 - **Schedules:** any number of rules, each with days of the week, a start and an end time. An end
   before the start runs over midnight. Add one by pulling the page down; tap to edit, long press
@@ -33,6 +34,8 @@ rules and the state.
   for the privileged group, which `invoker` gives to the programs listed in mapplauncherd's
   `privileges.d`
 - `dnd_schedule.json`, `DndSchedulePage.qml`: the Settings entry and page
+- `translations/`: the Settings entry's title (`.ts` sources; the `.qm` files are built from them with
+  `lrelease-qt5 -idbased`)
 
 ## Installing
 

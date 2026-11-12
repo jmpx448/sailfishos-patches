@@ -2,9 +2,9 @@
   "author": "jmpx448",
   "name": "calendar-widget-week-number",
   "display_name": "Calendar events: week number",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "category": "homescreen",
-  "description": "Shows the current ISO week number under the calendar icon of the Events view (vko 46), and names the week in the day headings only when the list continues into a later week, e.g. Monday (vko 47). The abbreviation is Finnish (viikko).",
+  "description": "Shows the current ISO week number under the calendar icon of the Events view (wk 46), and names the week in the day headings only when the list continues into a later week, e.g. Monday (wk 47). The abbreviation is vko (viikko) when the language is Finnish.",
   "compatible": [
     "5.2.0.22"
   ]

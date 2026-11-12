@@ -1,8 +1,10 @@
 {
+    "translation_catalog": "sfos-dnd-schedule",
     "entries": [
         {
             "path": "system_settings/look_and_feel/dnd_schedule",
-            "title": "Älä häiritse -ajastus",
+            "title": "Do not disturb schedule",
+            "translation_id": "sfos_dnd_schedule-title",
             "type": "page",
             "icon": "image://theme/icon-m-do-not-disturb",
             "order": 251,

@@ -12,4 +12,5 @@ ln -sf ../dnd-schedule-led.service /usr/lib/systemd/user/post-user-session.targe
 install -m 644 dnd_schedule.json /usr/share/jolla-settings/entries/dnd_schedule.json
 mkdir -p /usr/share/jolla-settings/pages/dnd_schedule
 install -m 644 DndSchedulePage.qml /usr/share/jolla-settings/pages/dnd_schedule/DndSchedulePage.qml
+install -m 644 translations/sfos-dnd-schedule-fi.qm translations/sfos-dnd-schedule_eng_en.qm /usr/share/translations/
 echo OK  # then as the user: systemctl --user daemon-reload

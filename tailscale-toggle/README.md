@@ -2,7 +2,8 @@
 
 A page in Settings → Connectivity with a switch that turns [Tailscale](https://tailscale.com/) on and off,
 shows its state (connected, off, connecting) and the device's Tailscale address, and a top menu switch
-that is highlighted while Tailscale is connected, like the other connection switches. The texts are in Finnish.
+that is highlighted while Tailscale is connected, like the other connection switches. The texts are
+in Finnish when the phone language is Finnish, otherwise in English.
 
 Sailfish OS has no official Tailscale client. This assumes the static arm64 build from
 [pkgs.tailscale.com](https://pkgs.tailscale.com/stable/#static) in `/usr/local/bin`, `tailscaled` running as a

@@ -9,18 +9,19 @@ Page {
     id: page
 
     property bool busy: false
+    readonly property bool finnish: Qt.locale().name.indexOf("fi") === 0
     readonly property string tsState: stateConfig.value
     readonly property bool running: tsState === "Running"
 
     function stateText() {
-        if (busy) return "Odotetaan…"
+        if (busy) return finnish ? "Odotetaan…" : "Waiting…"
         switch (tsState) {
-        case "Running": return "Yhdistetty"
-        case "Stopped": return "Pois päältä"
-        case "Starting": return "Yhdistetään…"
-        case "NeedsLogin": return "Vaatii kirjautumisen"
-        case "NoState": return "Ei tilaa"
-        case "": return "Haetaan tilaa…"
+        case "Running": return finnish ? "Yhdistetty" : "Connected"
+        case "Stopped": return finnish ? "Pois päältä" : "Off"
+        case "Starting": return finnish ? "Yhdistetään…" : "Connecting…"
+        case "NeedsLogin": return finnish ? "Vaatii kirjautumisen" : "Needs login"
+        case "NoState": return finnish ? "Ei tilaa" : "No state"
+        case "": return finnish ? "Haetaan tilaa…" : "Getting status…"
         default: return tsState
         }
     }
@@ -76,7 +77,7 @@ Page {
 
         PullDownMenu {
             MenuItem {
-                text: "Päivitä tila"
+                text: page.finnish ? "Päivitä tila" : "Refresh status"
                 onClicked: page.run("status")
             }
         }
@@ -99,7 +100,7 @@ Page {
 
             DetailItem {
                 visible: page.running && ipConfig.value !== ""
-                label: "Osoite"
+                label: page.finnish ? "Osoite" : "Address"
                 value: ipConfig.value
             }
 
@@ -110,8 +111,11 @@ Page {
                 wrapMode: Text.Wrap
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.secondaryHighlightColor
-                text: "Kun Tailscale on pois päältä, puhelimeen ei saa etäyhteyttä Tailscalen kautta. "
-                      + "Valinta säilyy uudelleenkäynnistyksen yli: laita Tailscale takaisin päälle täältä."
+                text: page.finnish
+                      ? "Kun Tailscale on pois päältä, puhelimeen ei saa etäyhteyttä Tailscalen kautta. "
+                        + "Valinta säilyy uudelleenkäynnistyksen yli: laita Tailscale takaisin päälle täältä."
+                      : "While Tailscale is off, the phone cannot be reached remotely through Tailscale. "
+                        + "The choice is kept over a restart: turn Tailscale back on here."
             }
         }
     }

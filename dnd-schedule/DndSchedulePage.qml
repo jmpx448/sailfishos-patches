@@ -9,17 +9,19 @@ Page {
     id: page
 
     property var rules: []
-    readonly property var dayNames: ["ma", "ti", "ke", "to", "pe", "la", "su"]
+    readonly property bool finnish: Qt.locale().name.indexOf("fi") === 0
+    readonly property var dayNames: finnish ? ["ma", "ti", "ke", "to", "pe", "la", "su"]
+                                            : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
     function pad(n) { return n < 10 ? "0" + n : "" + n }
-    function timeText(m) { return Math.floor(m / 60) + "." + pad(m % 60) }
+    function timeText(m) { return Math.floor(m / 60) + (finnish ? "." : ":") + pad(m % 60) }
 
     function daysText(days) {
         var d = days.slice(0).sort()
         var s = d.join(",")
-        if (s === "1,2,3,4,5,6,7") return "Joka päivä"
-        if (s === "1,2,3,4,5") return "Arkipäivät"
-        if (s === "6,7") return "Viikonloppu"
+        if (s === "1,2,3,4,5,6,7") return finnish ? "Joka päivä" : "Every day"
+        if (s === "1,2,3,4,5") return finnish ? "Arkipäivät" : "Weekdays"
+        if (s === "6,7") return finnish ? "Viikonloppu" : "Weekend"
         // Runs of three or more days as a range: ma–to, la.
         var parts = []
         var i = 0
@@ -115,7 +117,7 @@ Page {
 
         PullDownMenu {
             MenuItem {
-                text: "Lisää aikataulu"
+                text: page.finnish ? "Lisää aikataulu" : "Add schedule"
                 onClicked: pageStack.push(ruleDialog, {
                     ruleIndex: -1, days: [1, 2, 3, 4, 5], start: 22 * 60, end: 7 * 60 })
             }
@@ -125,13 +127,17 @@ Page {
             id: column
             width: parent.width
 
-            PageHeader { title: "Älä häiritse -ajastus" }
+            PageHeader { title: page.finnish ? "Älä häiritse -ajastus" : "Do not disturb schedule" }
 
             TextSwitch {
-                text: "Ajastus käytössä"
-                description: "Älä häiritse -tila menee päälle ja pois aikataulujen mukaan. "
-                             + "Jos kytket tilan käsin pois kesken aikataulun, se pysyy pois "
-                             + "seuraavaan alkuun asti."
+                text: page.finnish ? "Ajastus käytössä" : "Schedule enabled"
+                description: page.finnish
+                             ? "Älä häiritse -tila menee päälle ja pois aikataulujen mukaan. "
+                               + "Jos kytket tilan käsin pois kesken aikataulun, se pysyy pois "
+                               + "seuraavaan alkuun asti."
+                             : "Do not disturb turns on and off according to the schedules. "
+                               + "If you turn it off by hand during a schedule, it stays off "
+                               + "until the next start."
                 automaticCheck: false
                 checked: !!enabledConfig.value
                 onClicked: {
@@ -142,41 +148,53 @@ Page {
 
             // dnd-schedule-led.service follows this key and do not disturb itself.
             TextSwitch {
-                text: "Merkkivalo pois"
-                description: "Inari Bluen merkkivalo on sammuksissa aina, kun Älä häiritse -tila on päällä."
+                text: page.finnish ? "Merkkivalo pois" : "LED off"
+                description: page.finnish
+                             ? "Inari Bluen merkkivalo on sammuksissa aina, kun Älä häiritse -tila on päällä."
+                             : "The Inari Blue LED stays off whenever Do not disturb is on."
                 automaticCheck: false
                 checked: !!ledOffConfig.value
                 onClicked: ledOffConfig.value = !ledOffConfig.value
             }
 
             TextSwitch {
-                text: "Kello pois"
-                description: "Amazfish pysäytetään Älä häiritse -tilan ajaksi, joten kello ei saa "
-                             + "ilmoituksia eikä puheluita eikä värise. Tilan aikana tulleet ilmoitukset "
-                             + "eivät tule kelloon jälkikäteen, mutta ne ovat puhelimessa tallessa."
+                text: page.finnish ? "Kello pois" : "Watch off"
+                description: page.finnish
+                             ? "Amazfish pysäytetään Älä häiritse -tilan ajaksi, joten kello ei saa "
+                               + "ilmoituksia eikä puheluita eikä värise. Tilan aikana tulleet ilmoitukset "
+                               + "eivät tule kelloon jälkikäteen, mutta ne ovat puhelimessa tallessa."
+                             : "Amazfish is stopped while Do not disturb is on, so the watch gets no "
+                               + "notifications or calls and does not vibrate. Notifications that come in "
+                               + "meanwhile are not sent to the watch afterwards, but they are kept on the phone."
                 automaticCheck: false
                 checked: !!watchOffConfig.value
                 onClicked: watchOffConfig.value = !watchOffConfig.value
             }
 
             TextSwitch {
-                text: "Bluetooth pois"
-                description: "Bluetooth kytketään pois Älä häiritse -tilan ajaksi ja takaisin päälle, "
-                             + "kun tila päättyy, jos se oli päällä. Puhelin ei silloin pidä yhteyttä "
-                             + "kelloon eikä etsi sitä, joten akkua kuluu vähemmän. Kello ja "
-                             + "Bluetooth-kuulokkeet eivät toimi tilan aikana. Jos kytket Bluetoothin "
-                             + "käsin päälle kesken tilan, se pysyy päällä."
+                text: page.finnish ? "Bluetooth pois" : "Bluetooth off"
+                description: page.finnish
+                             ? "Bluetooth kytketään pois Älä häiritse -tilan ajaksi ja takaisin päälle, "
+                               + "kun tila päättyy, jos se oli päällä. Puhelin ei silloin pidä yhteyttä "
+                               + "kelloon eikä etsi sitä, joten akkua kuluu vähemmän. Kello ja "
+                               + "Bluetooth-kuulokkeet eivät toimi tilan aikana. Jos kytket Bluetoothin "
+                               + "käsin päälle kesken tilan, se pysyy päällä."
+                             : "Bluetooth is turned off while Do not disturb is on, and back on when it "
+                               + "ends if it was on. The phone then neither keeps up the link to the watch "
+                               + "nor scans for it, so it uses less battery. The watch and Bluetooth "
+                               + "headphones do not work meanwhile. If you turn Bluetooth on by hand "
+                               + "during it, it stays on."
                 automaticCheck: false
                 checked: !!btOffConfig.value
                 onClicked: btOffConfig.value = !btOffConfig.value
             }
 
             DetailItem {
-                label: "Älä häiritse nyt"
-                value: dndConfig.value ? "Päällä" : "Pois"
+                label: page.finnish ? "Älä häiritse nyt" : "Do not disturb now"
+                value: dndConfig.value ? (page.finnish ? "Päällä" : "On") : (page.finnish ? "Pois" : "Off")
             }
 
-            SectionHeader { text: "Aikataulut" }
+            SectionHeader { text: page.finnish ? "Aikataulut" : "Schedules" }
 
             Repeater {
                 model: page.rules.length
@@ -192,7 +210,8 @@ Page {
 
                     menu: ContextMenu {
                         MenuItem {
-                            text: item.rule.on ? "Poista käytöstä" : "Ota käyttöön"
+                            text: item.rule.on ? (page.finnish ? "Poista käytöstä" : "Disable")
+                                                : (page.finnish ? "Ota käyttöön" : "Enable")
                             onClicked: {
                                 var r = JSON.parse(JSON.stringify(item.rule))
                                 r.on = !r.on
@@ -200,7 +219,7 @@ Page {
                             }
                         }
                         MenuItem {
-                            text: "Poista"
+                            text: page.finnish ? "Poista" : "Delete"
                             onClicked: {
                                 var i = index
                                 item.remorseDelete(function () { page.removeRule(i) })
@@ -217,13 +236,14 @@ Page {
                             width: parent.width
                             truncationMode: TruncationMode.Fade
                             text: page.timeText(item.rule.start) + "–" + page.timeText(item.rule.end)
-                                  + (item.rule.end <= item.rule.start ? " (seuraavana päivänä)" : "")
+                                  + (item.rule.end <= item.rule.start ? (page.finnish ? " (seuraavana päivänä)" : " (next day)") : "")
                             color: item.highlighted ? Theme.highlightColor : Theme.primaryColor
                         }
                         Label {
                             width: parent.width
                             truncationMode: TruncationMode.Fade
-                            text: page.daysText(item.rule.days) + (item.rule.on ? "" : " · pois käytöstä")
+                            text: page.daysText(item.rule.days)
+                                  + (item.rule.on ? "" : (page.finnish ? " · pois käytöstä" : " · disabled"))
                             font.pixelSize: Theme.fontSizeSmall
                             color: item.highlighted ? Theme.secondaryHighlightColor : Theme.secondaryColor
                         }
@@ -237,7 +257,8 @@ Page {
                 width: parent.width - 2 * x
                 wrapMode: Text.Wrap
                 color: Theme.secondaryHighlightColor
-                text: "Ei aikatauluja. Lisää aikataulu vetämällä sivua alas."
+                text: page.finnish ? "Ei aikatauluja. Lisää aikataulu vetämällä sivua alas."
+                                    : "No schedules. Add one by pulling the page down."
             }
 
             Item { width: 1; height: Theme.paddingLarge }
@@ -248,8 +269,11 @@ Page {
                 wrapMode: Text.Wrap
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.secondaryHighlightColor
-                text: "Napauta aikataulua muokataksesi sitä, paina pitkään poistaaksesi. "
-                      + "Mitkä puhelut saavat soida, asetetaan kohdassa Äänet ja palaute."
+                text: page.finnish
+                      ? "Napauta aikataulua muokataksesi sitä, paina pitkään poistaaksesi. "
+                        + "Mitkä puhelut saavat soida, asetetaan kohdassa Äänet ja palaute."
+                      : "Tap a schedule to edit it, long press to delete it. "
+                        + "Which calls may ring is set in Sounds and feedback."
             }
         }
     }
@@ -298,11 +322,11 @@ Page {
                     width: parent.width
 
                     DialogHeader {
-                        acceptText: "Tallenna"
-                        cancelText: "Peruuta"
+                        acceptText: page.finnish ? "Tallenna" : "Save"
+                        cancelText: page.finnish ? "Peruuta" : "Cancel"
                     }
 
-                    SectionHeader { text: "Päivät" }
+                    SectionHeader { text: page.finnish ? "Päivät" : "Days" }
 
                     Row {
                         x: Theme.horizontalPageMargin
@@ -330,18 +354,19 @@ Page {
                         }
                     }
 
-                    SectionHeader { text: "Aika" }
+                    SectionHeader { text: page.finnish ? "Aika" : "Time" }
 
                     ValueButton {
-                        label: "Alkaa"
+                        label: page.finnish ? "Alkaa" : "Starts"
                         value: page.timeText(dialog.start)
                         onClicked: dialog.pickTime("start")
                     }
                     ValueButton {
-                        label: "Päättyy"
+                        label: page.finnish ? "Päättyy" : "Ends"
                         value: page.timeText(dialog.end)
-                               + (dialog.end < dialog.start ? " seuraavana päivänä" : "")
-                        description: dialog.start === dialog.end ? "Alku- ja loppuaika ovat samat" : ""
+                               + (dialog.end < dialog.start ? (page.finnish ? " seuraavana päivänä" : " next day") : "")
+                        description: dialog.start === dialog.end
+                                     ? (page.finnish ? "Alku- ja loppuaika ovat samat" : "The start and end times are the same") : ""
                         onClicked: dialog.pickTime("end")
                     }
                 }
