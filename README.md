@@ -22,7 +22,7 @@ Written for and tested on a Jolla phone with Sailfish OS 5.2.0.22.
 | Tool | Description |
 |---|---|
 | [Tailscale on/off in Settings](tailscale-toggle/) | A Settings page and a top menu switch to turn Tailscale on and off; the switch is highlighted while connected. Installed with its own `install.sh`, not with Patchmanager. |
-| [Do not disturb schedule](dnd-schedule/) | Turns do not disturb on and off on a schedule (days, start and end), from a Settings page. Optionally keeps the Inari Blue LED and an Amazfish watch quiet meanwhile. Installed with its own `install.sh`. |
+| [Do not disturb schedule](dnd-schedule/) | Turns do not disturb on and off on a schedule (days, start and end), from a Settings page. Optionally keeps the Inari Blue LED and an Amazfish watch quiet and turns Bluetooth off meanwhile. Installed with its own `install.sh`. |
 | [Wi-Fi from an NFC tag or QR code](nfc-wifi/) | Touching an NFC tag with a Wi-Fi network, or reading a Wi-Fi QR code with the Camera, asks whether to connect and adds the network. The Camera's QR page hides the password. Handler in the home screen plus a small Patchmanager patch; installed with its own `install.sh`. |
 
 ## Installing

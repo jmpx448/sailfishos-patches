@@ -8,7 +8,8 @@
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 DIST="$ROOT/dist"
-TOOLS_VERSION=1.0.0
+TAILSCALE_TOGGLE_VERSION=1.0.1
+DND_SCHEDULE_VERSION=1.1.0
 NFC_WIFI_VERSION=1.1.0
 mkdir -p "$DIST"
 
@@ -65,7 +66,7 @@ tool_spec() { # name
     case "$1" in
     tailscale-toggle) cat <<EOF2
 Name:       sfos-tailscale-toggle
-Version:    $TOOLS_VERSION
+Version:    $TAILSCALE_TOGGLE_VERSION
 Release:    1
 Summary:    Tailscale on/off page and top menu switch for Sailfish OS Settings
 License:    MIT
@@ -105,7 +106,7 @@ EOF2
     ;;
     dnd-schedule) cat <<EOF2
 Name:       sfos-dnd-schedule
-Version:    $TOOLS_VERSION
+Version:    $DND_SCHEDULE_VERSION
 Release:    1
 Summary:    Do not disturb schedule for Sailfish OS Settings
 License:    MIT
