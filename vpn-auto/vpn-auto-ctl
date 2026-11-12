@@ -1,0 +1,16 @@
+#!/usr/bin/python3
+# Turns a VPN on or off for vpn-auto, as the VPN switch in Settings does: by its AutoConnect, after
+# which connman connects or disconnects it. connman allows that only for the privileged group, so
+# this is run through invoker, which gives it that group (vpn-auto.privileges):
+#   invoker --type=generic /usr/bin/vpn-auto-ctl on|off /net/connman/service/vpn_<id>
+# Python, not sh: bash drops a set-group-ID group when it starts.
+import os
+import re
+import sys
+
+if (len(sys.argv) != 3 or sys.argv[1] not in ("on", "off")
+        or not re.match(r"^/net/connman/service/vpn_[A-Za-z0-9_]+$", sys.argv[2])):
+    sys.exit("usage: vpn-auto-ctl on|off /net/connman/service/vpn_<id>")
+os.execvp("dbus-send", ["dbus-send", "--system", "--print-reply", "--dest=net.connman", sys.argv[2],
+                        "net.connman.Service.SetProperty", "string:AutoConnect",
+                        "variant:boolean:" + ("true" if sys.argv[1] == "on" else "false")])

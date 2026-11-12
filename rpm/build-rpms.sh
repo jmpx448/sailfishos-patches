@@ -11,6 +11,7 @@ DIST="$ROOT/dist"
 TAILSCALE_TOGGLE_VERSION=1.0.1
 DND_SCHEDULE_VERSION=1.1.0
 NFC_WIFI_VERSION=1.1.0
+VPN_AUTO_VERSION=1.0.0
 mkdir -p "$DIST"
 
 build() { # spec-file
@@ -148,6 +149,50 @@ install -D -m 644 \$S/translations/sfos-dnd-schedule_eng_en.qm %{buildroot}/usr/
 /usr/share/translations/sfos-dnd-schedule_eng_en.qm
 EOF2
     ;;
+    vpn-auto) cat <<EOF2
+Name:       sfos-vpn-auto
+Version:    $VPN_AUTO_VERSION
+Release:    1
+Summary:    Automatic VPN: off on trusted Wi-Fi networks, on elsewhere
+License:    MIT
+URL:        https://github.com/jmpx448/sailfishos-patches
+BuildArch:  noarch
+Requires:   dconf
+Requires:   /usr/bin/python3
+
+%description
+Keeps the VPN off on trusted Wi-Fi networks, such as the home network, and on
+everywhere else (mobile data, other Wi-Fi networks), from a Settings >
+Connectivity page. A trusted network is recognised by its name and the hardware
+address of its router. The VPN is turned on and off as with the VPN switch.
+Afterwards, as the user: systemctl --user daemon-reload && systemctl --user start vpn-auto
+
+%install
+S=%{src}/vpn-auto
+install -D -m 755 \$S/vpn-auto %{buildroot}/usr/bin/vpn-auto
+install -D -m 755 \$S/vpn-auto-ctl %{buildroot}/usr/bin/vpn-auto-ctl
+install -D -m 644 \$S/vpn-auto.privileges %{buildroot}/usr/share/mapplauncherd/privileges.d/vpn-auto.privileges
+install -D -m 644 \$S/vpn-auto.service %{buildroot}/usr/lib/systemd/user/vpn-auto.service
+install -d %{buildroot}/usr/lib/systemd/user/post-user-session.target.wants
+ln -s ../vpn-auto.service %{buildroot}/usr/lib/systemd/user/post-user-session.target.wants/vpn-auto.service
+install -D -m 644 \$S/vpn_auto.json %{buildroot}/usr/share/jolla-settings/entries/vpn_auto.json
+install -D -m 644 \$S/VpnAutoPage.qml %{buildroot}/usr/share/jolla-settings/pages/vpn_auto/VpnAutoPage.qml
+install -D -m 644 \$S/translations/sfos-vpn-auto-fi.qm %{buildroot}/usr/share/translations/sfos-vpn-auto-fi.qm
+install -D -m 644 \$S/translations/sfos-vpn-auto_eng_en.qm %{buildroot}/usr/share/translations/sfos-vpn-auto_eng_en.qm
+
+%files
+/usr/bin/vpn-auto
+/usr/bin/vpn-auto-ctl
+/usr/share/mapplauncherd/privileges.d/vpn-auto.privileges
+/usr/lib/systemd/user/vpn-auto.service
+/usr/lib/systemd/user/post-user-session.target.wants/vpn-auto.service
+/usr/share/jolla-settings/entries/vpn_auto.json
+%dir /usr/share/jolla-settings/pages/vpn_auto
+/usr/share/jolla-settings/pages/vpn_auto/VpnAutoPage.qml
+/usr/share/translations/sfos-vpn-auto-fi.qm
+/usr/share/translations/sfos-vpn-auto_eng_en.qm
+EOF2
+    ;;
     nfc-wifi) cat <<EOF2
 Name:       sfos-nfc-wifi
 Version:    $NFC_WIFI_VERSION
@@ -211,7 +256,7 @@ if [ ${#ITEMS[@]} -eq 0 ]; then
         n=$(basename "$d")
         [ -f "$d/patch.json" ] && [ -f "$d/unified_diff.patch" ] && ITEMS+=("$n")
     done
-    ITEMS+=(tailscale-toggle dnd-schedule nfc-wifi)
+    ITEMS+=(tailscale-toggle dnd-schedule nfc-wifi vpn-auto)
 fi
 SPECS=$(mktemp -d)
 trap 'rm -rf "$SPECS" "$DIST/build" "$DIST/buildroot"' EXIT

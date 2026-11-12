@@ -1,0 +1,345 @@
+#!/usr/bin/python3
+# Automatic VPN: the VPN is off on trusted Wi-Fi networks and on everywhere else (mobile data,
+# other Wi-Fi networks). The settings page writes the trusted networks to dconf; this service
+# follows connman and acts when the network changes.
+#
+# On and off are the VPN's AutoConnect, as with the VPN switch in Settings and the top menu:
+# connman then connects or disconnects it, and reconnects it when the network comes back.
+#
+#   vpn-auto run     service: follow the network and connect or disconnect the VPN
+#   vpn-auto status  print the settings and the state
+#
+# A trusted network is its name (SSID) and the hardware address of its router (the gateway's
+# entry in /proc/net/arp), so another network with the same name is not trusted.
+#
+# The VPN is only turned on or off when the network changes (or the setting is turned on, or the
+# current network is added to or removed from the trusted ones). Turned on or off by hand with
+# the VPN switch, it stays so until the next change.
+
+import ast
+import json
+import subprocess
+import sys
+import threading
+import time
+
+KEY_ENABLED = "/apps/vpn-auto/enabled"
+KEY_TRUSTED = "/apps/vpn-auto/trusted"   # JSON: [{"ssid": "...", "gw": "aa:bb:cc:dd:ee:ff"}]
+KEY_VPN = "/apps/vpn-auto/vpn"           # name of the VPN to use; empty: the first one
+# Written by this service for the settings page.
+KEY_CURRENT = "/apps/vpn-auto/current"   # JSON: {"type", "ssid", "gw", "trusted"}
+KEY_VPNS = "/apps/vpn-auto/vpns"         # JSON: names of the VPNs
+KEY_STATE = "/apps/vpn-auto/state"       # state of the VPN (connman: idle, ready, ...)
+SETTINGS = (KEY_ENABLED, KEY_TRUSTED, KEY_VPN)
+
+CTL = "/usr/bin/vpn-auto-ctl"
+
+
+def log(msg):
+    # Events only, no network names; /tmp is cleared at boot.
+    try:
+        with open("/tmp/vpn-auto.log", "a") as f:
+            f.write(time.strftime("%d.%m. %H:%M:%S ") + msg + "\n")
+    except OSError:
+        pass
+
+
+def dconf_read(key):
+    return subprocess.run(["dconf", "read", key], stdout=subprocess.PIPE,
+                          universal_newlines=True).stdout.strip()
+
+
+def dconf_string(key):
+    v = dconf_read(key)
+    try:
+        # A GVariant string literal ('…' or "…", backslash escapes) reads as a Python one.
+        s = ast.literal_eval(v) if v else ""
+    except (ValueError, SyntaxError):
+        return ""
+    return s if isinstance(s, str) else ""
+
+
+def dconf_json(key, default):
+    try:
+        return json.loads(dconf_string(key))
+    except ValueError:
+        return default
+
+
+def dconf_bool(key, default):
+    v = dconf_read(key)
+    return default if v == "" else v == "true"
+
+
+published = {}
+
+
+def publish(key, value):
+    # Only changes are written: the page follows these keys.
+    text = json.dumps(value) if not isinstance(value, str) else value
+    if published.get(key) == text:
+        return
+    published[key] = text
+    literal = "'" + text.replace("\\", "\\\\").replace("'", "\\'") + "'"
+    subprocess.run(["dconf", "write", key, literal])
+
+
+# --- dbus-send --print-reply output as Python values ----------------------------------------
+
+def _value(s):
+    q1, q2 = s.find('"'), s.rfind('"')
+    if s.startswith(("string ", "object path ")) and q1 >= 0:
+        return s[q1 + 1:q2]
+    word, _, rest = s.partition(" ")
+    rest = rest.strip()
+    if word == "boolean":
+        return rest == "true"
+    try:
+        return int(rest, 0)
+    except ValueError:
+        return rest
+
+
+def _parse(lines, i):
+    s = lines[i].strip()
+    if s.startswith("variant"):
+        s = s[len("variant"):].strip()
+    if s.startswith("array ["):
+        items, i = [], i + 1
+        while lines[i].strip() != "]":
+            v, i = _parse(lines, i)
+            items.append(v)
+        if items and all(isinstance(x, tuple) for x in items):
+            return dict(items), i + 1
+        return items, i + 1
+    if s == "struct {":
+        items, i = [], i + 1
+        while lines[i].strip() != "}":
+            v, i = _parse(lines, i)
+            items.append(v)
+        return items, i + 1
+    if s == "dict entry(":
+        k, i = _parse(lines, i + 1)
+        v, i = _parse(lines, i)
+        return (k, v), i + 1  # the closing ")"
+    return _value(s), i + 1
+
+
+def call(dest, path, method):
+    out = subprocess.run(["dbus-send", "--system", "--print-reply", "--dest=" + dest, path, method],
+                         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                         universal_newlines=True).stdout.splitlines()
+    if len(out) < 2:
+        return None
+    try:
+        return _parse(out, 1)[0]
+    except (IndexError, ValueError):
+        return None
+
+
+# --- the network and the VPN -----------------------------------------------------------------
+
+def gateway_mac(gateway, device):
+    try:
+        with open("/proc/net/arp") as f:
+            for line in f.readlines()[1:]:
+                p = line.split()
+                # IP address, HW type, Flags (0x2 = complete), HW address, Mask, Device
+                if len(p) >= 6 and p[0] == gateway and p[2] == "0x2" and (not device or p[5] == device):
+                    return p[3].lower()
+    except OSError:
+        pass
+    return ""
+
+
+def route_gateway(device):
+    # With the VPN on, connman leaves the Gateway out of the Wi-Fi service, but the route to the
+    # VPN server still goes through the router.
+    try:
+        with open("/proc/net/route") as f:
+            for line in f.readlines()[1:]:
+                p = line.split()  # Iface, Destination, Gateway (hex, little-endian), ...
+                if len(p) >= 3 and p[0] == device and p[2] != "00000000":
+                    return ".".join(str(b) for b in bytes.fromhex(p[2])[::-1])
+    except (OSError, ValueError):
+        pass
+    return ""
+
+
+def services():
+    """[(path, properties)] of connman's services, in its order (the default one first)."""
+    return call("net.connman", "/", "net.connman.Manager.GetServices") or []
+
+
+def current_network(svcs):
+    """{"type": "wifi"/"cellular"/"ethernet"/"", "path", "ssid", "gw"} of the default
+    connection (the first connected one in connman's order, VPNs left out)."""
+    for path, props in svcs:
+        if props.get("Type") not in ("wifi", "cellular", "ethernet"):
+            continue
+        if props.get("State") not in ("ready", "online"):
+            continue
+        net = {"type": props["Type"], "path": path, "ssid": "", "gw": ""}
+        if props["Type"] == "wifi":
+            net["ssid"] = props.get("Name", "")
+            device = (props.get("Ethernet") or {}).get("Interface", "")
+            gateway = (props.get("IPv4") or {}).get("Gateway", "") or route_gateway(device)
+            # The router's entry may come a moment after the connection.
+            for _ in range(10):
+                net["gw"] = gateway_mac(gateway, device) if gateway else ""
+                if net["gw"]:
+                    break
+                time.sleep(1)
+        return net
+    return {"type": "", "path": "", "ssid": "", "gw": ""}
+
+
+def vpns():
+    """[(path, name, state)] of the VPNs connman-vpn knows."""
+    return [(path, props.get("Name", ""), props.get("State", ""))
+            for path, props in call("net.connman.vpn", "/", "net.connman.vpn.Manager.GetConnections") or []]
+
+
+def chosen_vpn(all_vpns):
+    name = dconf_string(KEY_VPN)
+    for v in all_vpns:
+        if v[1] == name:
+            return v
+    return all_vpns[0] if all_vpns else None
+
+
+def is_trusted(net):
+    if net["type"] != "wifi" or not net["gw"]:
+        return False
+    return any(t.get("ssid") == net["ssid"] and t.get("gw") == net["gw"]
+               for t in dconf_json(KEY_TRUSTED, []))
+
+
+def vpn_service(vpn):
+    # connman's service for a connman-vpn connection
+    return "/net/connman/service/vpn_" + vpn[0].rsplit("/", 1)[1]
+
+
+def auto_connect(svcs, vpn):
+    for path, props in svcs:
+        if path == vpn_service(vpn):
+            return bool(props.get("AutoConnect"))
+    return False
+
+
+def vpn_ctl(action, vpn):
+    # connman lets only the privileged group change the VPN; invoker gives vpn-auto-ctl that
+    # group (vpn-auto.privileges).
+    r = subprocess.run(["invoker", "--type=generic", CTL, action, vpn_service(vpn)],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, universal_newlines=True)
+    if r.stderr.strip():
+        log(action + ": " + r.stderr.strip().splitlines()[-1])
+
+
+lock = threading.Lock()
+last_key = None  # (connman service, trusted) when the VPN was last set
+
+
+def evaluate():
+    global last_key
+    with lock:
+        svcs = services()
+        net = current_network(svcs)
+        trusted = is_trusted(net)
+        publish(KEY_CURRENT, {"type": net["type"], "ssid": net["ssid"], "gw": net["gw"],
+                              "trusted": trusted})
+        all_vpns = vpns()
+        publish(KEY_VPNS, [v[1] for v in all_vpns])
+        vpn = chosen_vpn(all_vpns)
+        state = vpn[2] if vpn else ""
+        if published.get(KEY_STATE) != state:
+            log("VPN state " + (state or "none"))
+        publish(KEY_STATE, state)
+        if not net["type"] or not vpn or not dconf_bool(KEY_ENABLED, False):
+            return  # offline (a short break is no change), no VPN, or turned off
+        key = (net["path"], trusted)
+        if key == last_key:
+            return
+        last_key = key
+        where = ("trusted wifi" if trusted else "other " + net["type"])
+        on = auto_connect(svcs, vpn)
+        if trusted == on:
+            log(where + ": VPN " + ("off" if trusted else "on"))
+            vpn_ctl("off" if trusted else "on", vpn)
+        else:
+            log(where + ": VPN already " + ("on" if on else "off"))
+
+
+timer = None
+
+
+def later(delay=1.5):
+    # Changes come in bursts (state, addresses, order of services): act once they settle.
+    global timer
+    if timer:
+        timer.cancel()
+    timer = threading.Timer(delay, evaluate)
+    timer.daemon = True
+    timer.start()
+
+
+def follow_settings():
+    global last_key
+    watch = subprocess.Popen(["dconf", "watch", "/apps/vpn-auto/"], stdout=subprocess.PIPE,
+                             universal_newlines=True)
+    for line in watch.stdout:
+        if line.strip() in SETTINGS:
+            if line.strip() == KEY_ENABLED:
+                with lock:
+                    last_key = None  # turned on: set the VPN for the current network now
+            later(0.5)
+    sys.exit("dconf watch ended")
+
+
+def run():
+    threading.Thread(target=follow_settings, daemon=True).start()
+    evaluate()
+    # connman: services appear, change state and order; connman-vpn: the VPN's state.
+    mon = subprocess.Popen(["dbus-monitor", "--system",
+                            "type=signal,sender=net.connman,interface=net.connman.Manager",
+                            "type=signal,sender=net.connman,interface=net.connman.Service,member=PropertyChanged",
+                            "type=signal,sender=net.connman.vpn"],
+                           stdout=subprocess.PIPE, universal_newlines=True)
+    header = ""
+    for line in mon.stdout:
+        if not line.startswith(" "):
+            header = line
+            if "interface=net.connman.Manager" in line:
+                later()
+            continue
+        # The first argument of PropertyChanged is the property's name; signal strength and
+        # the like change all the time and are skipped.
+        if header and "member=PropertyChanged" in header:
+            name = line.strip()
+            if name in ('string "State"', 'string "IPv4"', 'string "Name"'):
+                later()
+            header = ""
+    sys.exit("dbus-monitor ended")
+
+
+def main():
+    cmd = sys.argv[1] if len(sys.argv) > 1 else "status"
+    if cmd == "run":
+        run()
+    elif cmd == "status":
+        svcs = services()
+        net = current_network(svcs)
+        print("enabled:", dconf_bool(KEY_ENABLED, False))
+        print("network:", net["type"] or "none", " router known:", bool(net["gw"]),
+              " trusted:", is_trusted(net))
+        print("trusted networks:", len(dconf_json(KEY_TRUSTED, [])))
+        all_vpns = vpns()
+        vpn = chosen_vpn(all_vpns)
+        print("VPNs:", len(all_vpns), " chosen:", vpn[1] if vpn else None,
+              " state:", vpn[2] if vpn else None, " on (AutoConnect):", auto_connect(svcs, vpn) if vpn else None)
+    else:
+        sys.exit("usage: vpn-auto run|status")
+
+
+if __name__ == "__main__":
+    main()

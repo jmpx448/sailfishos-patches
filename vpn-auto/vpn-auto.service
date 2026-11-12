@@ -1,0 +1,10 @@
+[Unit]
+Description=Automatic VPN: off on trusted Wi-Fi networks, on elsewhere
+
+[Service]
+ExecStart=/usr/bin/vpn-auto run
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=post-user-session.target

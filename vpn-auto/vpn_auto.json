@@ -1,0 +1,16 @@
+{
+    "translation_catalog": "sfos-vpn-auto",
+    "entries": [
+        {
+            "path": "system_settings/connectivity/vpn_auto",
+            "title": "Automatic VPN",
+            "translation_id": "sfos_vpn_auto-title",
+            "type": "page",
+            "icon": "image://theme/icon-m-vpn",
+            "order": 351,
+            "params": {
+                "source": "/usr/share/jolla-settings/pages/vpn_auto/VpnAutoPage.qml"
+            }
+        }
+    ]
+}

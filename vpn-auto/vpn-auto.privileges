@@ -1,0 +1,2 @@
+# invoker runs vpn-auto-ctl with the privileged group (connman: the VPN on or off)
+/usr/bin/vpn-auto-ctl,
