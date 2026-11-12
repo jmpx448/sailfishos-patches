@@ -82,6 +82,11 @@ Page {
         defaultValue: false
     }
     ConfigurationValue {
+        id: btOffConfig
+        key: "/apps/dnd-schedule/bt_off"
+        defaultValue: false
+    }
+    ConfigurationValue {
         id: dndConfig
         key: "/lipstick/do_not_disturb"
         defaultValue: false
@@ -152,6 +157,18 @@ Page {
                 automaticCheck: false
                 checked: !!watchOffConfig.value
                 onClicked: watchOffConfig.value = !watchOffConfig.value
+            }
+
+            TextSwitch {
+                text: "Bluetooth pois"
+                description: "Bluetooth kytketään pois Älä häiritse -tilan ajaksi ja takaisin päälle, "
+                             + "kun tila päättyy, jos se oli päällä. Puhelin ei silloin pidä yhteyttä "
+                             + "kelloon eikä etsi sitä, joten akkua kuluu vähemmän. Kello ja "
+                             + "Bluetooth-kuulokkeet eivät toimi tilan aikana. Jos kytket Bluetoothin "
+                             + "käsin päälle kesken tilan, se pysyy päällä."
+                automaticCheck: false
+                checked: !!btOffConfig.value
+                onClicked: btOffConfig.value = !btOffConfig.value
             }
 
             DetailItem {

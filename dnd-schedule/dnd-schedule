@@ -5,8 +5,9 @@
 #   dnd-schedule sync    reschedule after a change, and at the start of the session
 #   dnd-schedule start   from timed: a rule starts
 #   dnd-schedule end     from timed: a rule ends
-#   dnd-schedule led     service: LED (Inari Blue) and watch (Amazfish) off while do not disturb is
-#                        on; afterwards the LED shows what came in meanwhile, until the next unlock
+#   dnd-schedule led     service: LED (Inari Blue), watch (Amazfish) and Bluetooth off while do not
+#                        disturb is on; afterwards the LED shows what came in meanwhile, until the
+#                        next unlock
 #   dnd-schedule status  print the rules and the state
 #
 # A rule: {"on": true, "days": [1..7] (1 = Monday), "start": minutes, "end": minutes}.
@@ -125,6 +126,33 @@ QUIET_UNITS = [
 ]
 
 
+# Bluetooth off while do not disturb is on (optional): the phone then neither keeps up the watch
+# link nor scans for the watch, and sleeps much better. bt_by_dnd remembers that we turned it
+# off, so only then is it turned back on; turned on by hand meanwhile, it is left on.
+KEY_BT_OFF = "/apps/dnd-schedule/bt_off"
+KEY_BT_BY_US = "/apps/dnd-schedule/bt_by_dnd"
+CONNMAN_BT = ["dbus-send", "--system", "--print-reply", "--dest=net.connman",
+              "/net/connman/technology/bluetooth"]
+
+
+def bt_powered():
+    out = subprocess.run(CONNMAN_BT + ["net.connman.Technology.GetProperties"],
+                         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                         universal_newlines=True).stdout.splitlines()
+    for i, line in enumerate(out[:-1]):
+        if line.strip() == 'string "Powered"':
+            return out[i + 1].split()[-1] == "true"
+    return False
+
+
+def bt_set(on):
+    # connman lets only the privileged group switch it; invoker gives dnd-schedule-bt that group.
+    r = subprocess.run(["invoker", "--type=generic", "/usr/bin/dnd-schedule-bt", "on" if on else "off"],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, universal_newlines=True)
+    if r.stderr.strip():
+        log("bluetooth: " + r.stderr.strip().splitlines()[-1])
+
+
 INARI = "inari-blue-notifier-daemon.service"
 INARI_CONFIG = "/home/defaultuser/.config/dev.rikudou/inari-blue-notifier/config_v3.ini"
 INARI_DBUS = ["gdbus", "call", "--session", "--dest", "dev.rikudou.InariBlueNotifier",
@@ -185,6 +213,15 @@ def play(pattern):
 def led_apply():
     global replaying
     dnd = dconf_bool(KEY_DND, False)
+    bt_off = dnd and dconf_bool(KEY_BT_OFF, False)
+    # Bluetooth goes on before Amazfish is started, and off after it has been stopped.
+    bt_back = False
+    if not bt_off and dconf_bool(KEY_BT_BY_US, False):
+        dconf_write_bool(KEY_BT_BY_US, False)
+        log("bluetooth on")
+        bt_set(True)
+        bt_back = True
+    watch_started = False
     for unit, key, default in QUIET_UNITS:
         off = dnd and dconf_bool(key, default)
         active = subprocess.run(["systemctl", "--user", "is-active", "--quiet", unit]).returncode == 0
@@ -207,7 +244,16 @@ def led_apply():
                     replaying = True
                     log("played " + pattern.get("name", "?"))
             elif unit == "harbour-amazfish.service":
+                watch_started = True
                 watch_reconnect()
+    if bt_off and bt_powered():
+        dconf_write_bool(KEY_BT_BY_US, True)
+        log("bluetooth off")
+        bt_set(False)
+    elif bt_back and not watch_started and subprocess.run(
+            ["systemctl", "--user", "is-active", "--quiet", "harbour-amazfish.service"]).returncode == 0:
+        # Amazfish kept running without Bluetooth; it does not reconnect by itself.
+        watch_reconnect()
 
 
 def watch_state():
@@ -289,7 +335,7 @@ def led():
     # dconf watch prints the key and the new value on each change; just re-read the keys.
     watch = subprocess.Popen(["dconf", "watch", "/"], stdout=subprocess.PIPE, universal_newlines=True)
     for line in watch.stdout:
-        if line.strip() == KEY_DND or line.strip() in [k for _, k, _ in QUIET_UNITS]:
+        if line.strip() in [KEY_DND, KEY_BT_OFF] + [k for _, k, _ in QUIET_UNITS]:
             led_apply()
     sys.exit("dconf watch ended")
 
@@ -317,6 +363,8 @@ def main():
               " active now:", any_active(datetime.datetime.now()))
         for unit, key, default in QUIET_UNITS:
             print(key.rsplit("/", 1)[1] + ":", dconf_bool(key, default), unit)
+        print("bt_off:", dconf_bool(KEY_BT_OFF, False), " bt_by_dnd:", dconf_bool(KEY_BT_BY_US, False),
+              " bluetooth powered:", bt_powered())
         print("timed events:", " ".join(timed("-s", "APPLICATION=" + APP).split()))
     else:
         sys.exit("usage: dnd-schedule sync|start|end|led|status")

@@ -1,0 +1,2 @@
+# invoker runs dnd-schedule-bt with the privileged group (connman: Bluetooth on/off)
+/usr/bin/dnd-schedule-bt,

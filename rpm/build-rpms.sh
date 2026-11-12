@@ -117,11 +117,13 @@ Requires:   dconf
 Turns do not disturb on and off on a schedule (days, start and end) from a
 Settings > Look and feel page, with timed events that also wake a sleeping
 phone. Optionally keeps the Inari Blue LED and an Amazfish watch quiet
-meanwhile. Afterwards, as the user: systemctl --user daemon-reload
+meanwhile, and turns Bluetooth off. Afterwards, as the user: systemctl --user daemon-reload
 
 %install
 S=%{src}/dnd-schedule
 install -D -m 755 \$S/dnd-schedule %{buildroot}/usr/bin/dnd-schedule
+install -D -m 755 \$S/dnd-schedule-bt %{buildroot}/usr/bin/dnd-schedule-bt
+install -D -m 644 \$S/dnd-schedule.privileges %{buildroot}/usr/share/mapplauncherd/privileges.d/dnd-schedule.privileges
 install -D -m 644 \$S/dnd-schedule-sync.service %{buildroot}/usr/lib/systemd/user/dnd-schedule-sync.service
 install -D -m 644 \$S/dnd-schedule-led.service %{buildroot}/usr/lib/systemd/user/dnd-schedule-led.service
 install -d %{buildroot}/usr/lib/systemd/user/post-user-session.target.wants
@@ -132,6 +134,8 @@ install -D -m 644 \$S/DndSchedulePage.qml %{buildroot}/usr/share/jolla-settings/
 
 %files
 /usr/bin/dnd-schedule
+/usr/bin/dnd-schedule-bt
+/usr/share/mapplauncherd/privileges.d/dnd-schedule.privileges
 /usr/lib/systemd/user/dnd-schedule-*.service
 /usr/lib/systemd/user/post-user-session.target.wants/dnd-schedule-*.service
 /usr/share/jolla-settings/entries/dnd_schedule.json

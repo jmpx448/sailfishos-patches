@@ -17,6 +17,9 @@ on a schedule. The texts are in Finnish.
 - **Watch off (optional):** with [Amazfish](https://github.com/piggz/harbour-amazfish), its service
   is stopped while do not disturb is on, as the watch would otherwise still buzz. It is started
   again (and reconnected) afterwards.
+- **Bluetooth off (optional):** Bluetooth is turned off while do not disturb is on, and back on
+  afterwards if it was on before. The phone then neither keeps up the watch link nor scans for the
+  watch, and sleeps much better. Turned on by hand meanwhile, it stays on.
 
 Rules and settings are in dconf under `/apps/dnd-schedule/`. `dnd-schedule status` prints the
 rules and the state.
@@ -25,7 +28,10 @@ rules and the state.
 
 - `dnd-schedule`: the script (`sync`, `start`, `end`, `led`, `status`)
 - `dnd-schedule-sync.service`: reschedules at the start of the session and after a change on the page
-- `dnd-schedule-led.service`: the LED and watch part (`dnd-schedule led`)
+- `dnd-schedule-led.service`: the LED, watch and Bluetooth part (`dnd-schedule led`)
+- `dnd-schedule-bt`, `dnd-schedule.privileges`: turns Bluetooth on or off; connman allows that only
+  for the privileged group, which `invoker` gives to the programs listed in mapplauncherd's
+  `privileges.d`
 - `dnd_schedule.json`, `DndSchedulePage.qml`: the Settings entry and page
 
 ## Installing

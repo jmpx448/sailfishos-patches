@@ -2,6 +2,8 @@
 # Run as root on the phone from the directory with the files.
 set -e
 install -m 755 dnd-schedule /usr/bin/dnd-schedule
+install -m 755 dnd-schedule-bt /usr/bin/dnd-schedule-bt
+install -m 644 dnd-schedule.privileges /usr/share/mapplauncherd/privileges.d/dnd-schedule.privileges
 install -m 644 dnd-schedule-sync.service /usr/lib/systemd/user/dnd-schedule-sync.service
 mkdir -p /usr/lib/systemd/user/post-user-session.target.wants
 ln -sf ../dnd-schedule-sync.service /usr/lib/systemd/user/post-user-session.target.wants/dnd-schedule-sync.service

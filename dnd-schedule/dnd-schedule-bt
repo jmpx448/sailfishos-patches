@@ -1,0 +1,13 @@
+#!/usr/bin/python3
+# Bluetooth on or off for dnd-schedule. connman lets only the privileged group change it, so
+# this is run through invoker, which gives it that group (dnd-schedule.privileges):
+#   invoker --type=generic /usr/bin/dnd-schedule-bt on|off
+# Python, not sh: bash drops a set-group-ID group when it starts.
+import os
+import sys
+
+if len(sys.argv) != 2 or sys.argv[1] not in ("on", "off"):
+    sys.exit("usage: dnd-schedule-bt on|off")
+os.execvp("dbus-send", ["dbus-send", "--system", "--print-reply", "--dest=net.connman",
+                        "/net/connman/technology/bluetooth", "net.connman.Technology.SetProperty",
+                        "string:Powered", "variant:boolean:" + ("true" if sys.argv[1] == "on" else "false")])

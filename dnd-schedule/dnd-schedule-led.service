@@ -1,5 +1,5 @@
 [Unit]
-Description=Do not disturb: LED (Inari Blue) and watch (Amazfish) off while do not disturb is on
+Description=Do not disturb: LED (Inari Blue), watch (Amazfish) and Bluetooth off while do not disturb is on
 After=inari-blue-notifier-daemon.service
 
 [Service]
