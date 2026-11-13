@@ -1,0 +1,12 @@
+[Unit]
+Description=SBC XQ for Bluetooth headphones
+After=pulseaudio.service
+
+[Service]
+ExecStart=/usr/bin/bt-sbc-xq
+ExecStopPost=/usr/bin/bt-sbc-xq off
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=post-user-session.target

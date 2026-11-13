@@ -24,6 +24,7 @@ Written for and tested on a Jolla phone with Sailfish OS 5.2.0.22.
 | [Tailscale on/off in Settings](tailscale-toggle/) | A Settings page and a top menu switch to turn Tailscale on and off; the switch is highlighted while connected. Installed with its own `install.sh`, not with Patchmanager. |
 | [Do not disturb schedule](dnd-schedule/) | Turns do not disturb on and off on a schedule (days, start and end), from a Settings page. Optionally keeps the Inari Blue LED and an Amazfish watch quiet and turns Bluetooth off meanwhile. Installed with its own `install.sh`. |
 | [Automatic VPN](vpn-auto/) | Keeps the VPN off on trusted Wi-Fi networks, such as the home network, and on everywhere else (mobile data, other Wi-Fi networks), from a Settings page. A trusted network is recognised by its name and its router's hardware address. Installed with its own `install.sh`. |
+| [SBC XQ for Bluetooth headphones](bt-sbc-xq/) | Switches Bluetooth headphones from plain SBC to SBC XQ (552 kbit/s instead of about 330) on every connection, the best quality Sailfish OS 5.2 offers them. A top menu switch turns it on and off. Installed with its own `install.sh`. |
 | [Wi-Fi from an NFC tag or QR code](nfc-wifi/) | Touching an NFC tag with a Wi-Fi network, or reading a Wi-Fi QR code with the Camera, asks whether to connect and adds the network. The Camera's QR page hides the password. Handler in the home screen plus a small Patchmanager patch; installed with its own `install.sh`. |
 
 ## Installing

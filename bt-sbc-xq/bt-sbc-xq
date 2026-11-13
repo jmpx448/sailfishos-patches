@@ -1,0 +1,67 @@
+#!/bin/sh
+# SBC XQ for Bluetooth headphones. PulseAudio connects A2DP headphones with plain SBC every time;
+# while this service runs, each connection is switched to SBC XQ, if the headphones offer it.
+# Only plain SBC is switched. "off" (when the service stops) switches XQ back to plain SBC.
+#
+#   bt-sbc-xq       service: switch the connected headphones now and on every new connection
+#   bt-sbc-xq off   switch the connected headphones back to plain SBC
+#
+# The bitrate is the dconf key /apps/bt-sbc-xq/codec: sbc_xq_552 (default), sbc_xq_512 or
+# sbc_xq_453.
+
+# pactl output is translated in the session locale: the parsing below needs English.
+export LC_ALL=C
+
+CODEC=$(dconf read /apps/bt-sbc-xq/codec 2>/dev/null | tr -d "'")
+case "$CODEC" in
+    sbc_xq_453|sbc_xq_512|sbc_xq_552) ;;
+    *) CODEC=sbc_xq_552 ;;
+esac
+
+# The active profile of a card (a2dp_sink while the headphones play music).
+profile() {
+    pactl list cards | awk -v c="$1" '
+        /^Card #/ { this = 0 }
+        $1 == "Name:" { this = ($2 == c) }
+        this && $1 == "Active" && $2 == "Profile:" { print $3; exit }'
+}
+
+# switch <card> <from> <to>: from is a pattern of the current codec, e.g. "sbc" or "sbc_xq_*".
+switch() {
+    [ "$(profile "$1")" = a2dp_sink ] || return
+    now=$(pactl send-message "/card/$1/bluez" get-codec 2>/dev/null | tr -d '"')
+    case "$now" in
+        $2) ;;
+        *) return ;;
+    esac
+    [ "$now" = "$3" ] && return
+    pactl send-message "/card/$1/bluez" list-codecs 2>/dev/null | grep -q "\"name\":\"$3\"" || return
+    pactl send-message "/card/$1/bluez" switch-codec "\"$3\"" >/dev/null 2>&1 || return
+    # A codec switch leaves playing streams on sink.null: move them back to the headphones.
+    sleep 1
+    sink=$(pactl list sinks short | awk -v s="bluez_sink.${1#bluez_card.}." 'index($2, s) == 1 { print $1; exit }')
+    null=$(pactl list sinks short | awk '$2 == "sink.null" { print $1; exit }')
+    [ -n "$sink" ] && [ -n "$null" ] || return
+    pactl list sink-inputs short | awk -v n="$null" '$2 == n { print $1 }' | while read -r input; do
+        pactl move-sink-input "$input" "$sink"
+    done
+}
+
+# all <from> <to>: every connected Bluetooth card
+all() {
+    for card in $(pactl list cards short | awk '$2 ~ /^bluez_card\./ { print $2 }'); do
+        switch "$card" "$1" "$2"
+    done
+}
+
+if [ "$1" = off ]; then
+    all "sbc_xq_*" sbc
+    exit 0
+fi
+
+all sbc "$CODEC"
+pactl subscribe | while read -r line; do
+    case "$line" in
+        *"'new' on card"*) sleep 2; all sbc "$CODEC" ;;
+    esac
+done

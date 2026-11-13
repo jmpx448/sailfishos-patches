@@ -1,0 +1,14 @@
+{
+    "entries": [
+        {
+            "path": "system_settings/look_and_feel/topmenu/bt_sbc_xq/enable_switch",
+            "type": "custom",
+            "title": "SBC XQ",
+            "icon": "image://theme/icon-m-headset",
+            "params": {
+                "source": "/usr/share/jolla-settings/pages/bt_sbc_xq/EnableSwitch.qml",
+                "type": "grid"
+            }
+        }
+    ]
+}

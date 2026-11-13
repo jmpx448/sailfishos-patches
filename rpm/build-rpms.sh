@@ -12,6 +12,7 @@ TAILSCALE_TOGGLE_VERSION=1.0.1
 DND_SCHEDULE_VERSION=1.1.0
 NFC_WIFI_VERSION=1.1.0
 VPN_AUTO_VERSION=1.0.0
+BT_SBC_XQ_VERSION=1.0.0
 mkdir -p "$DIST"
 
 build() { # spec-file
@@ -193,6 +194,41 @@ install -D -m 644 \$S/translations/sfos-vpn-auto_eng_en.qm %{buildroot}/usr/shar
 /usr/share/translations/sfos-vpn-auto_eng_en.qm
 EOF2
     ;;
+    bt-sbc-xq) cat <<EOF2
+Name:       sfos-bt-sbc-xq
+Version:    $BT_SBC_XQ_VERSION
+Release:    1
+Summary:    SBC XQ for Bluetooth headphones, with a top menu switch
+License:    MIT and BSD-3-Clause
+URL:        https://github.com/jmpx448/sailfishos-patches
+BuildArch:  noarch
+Requires:   pulseaudio
+Requires:   dconf
+
+%description
+Switches Bluetooth headphones from plain SBC to SBC XQ (552 kbit/s instead of
+about 330) on every connection, if the headphones offer it. A top menu switch
+turns it on and off. Afterwards, as the user: systemctl --user daemon-reload &&
+systemctl --user start bt-sbc-xq
+
+%install
+S=%{src}/bt-sbc-xq
+install -D -m 755 \$S/bt-sbc-xq %{buildroot}/usr/bin/bt-sbc-xq
+install -D -m 644 \$S/bt-sbc-xq.service %{buildroot}/usr/lib/systemd/user/bt-sbc-xq.service
+install -d %{buildroot}/usr/lib/systemd/user/post-user-session.target.wants
+ln -s ../bt-sbc-xq.service %{buildroot}/usr/lib/systemd/user/post-user-session.target.wants/bt-sbc-xq.service
+install -D -m 644 \$S/bt_sbc_xq.json %{buildroot}/usr/share/jolla-settings/entries/bt_sbc_xq.json
+install -D -m 644 \$S/EnableSwitch.qml %{buildroot}/usr/share/jolla-settings/pages/bt_sbc_xq/EnableSwitch.qml
+
+%files
+/usr/bin/bt-sbc-xq
+/usr/lib/systemd/user/bt-sbc-xq.service
+/usr/lib/systemd/user/post-user-session.target.wants/bt-sbc-xq.service
+/usr/share/jolla-settings/entries/bt_sbc_xq.json
+%dir /usr/share/jolla-settings/pages/bt_sbc_xq
+/usr/share/jolla-settings/pages/bt_sbc_xq/EnableSwitch.qml
+EOF2
+    ;;
     nfc-wifi) cat <<EOF2
 Name:       sfos-nfc-wifi
 Version:    $NFC_WIFI_VERSION
@@ -256,7 +292,7 @@ if [ ${#ITEMS[@]} -eq 0 ]; then
         n=$(basename "$d")
         [ -f "$d/patch.json" ] && [ -f "$d/unified_diff.patch" ] && ITEMS+=("$n")
     done
-    ITEMS+=(tailscale-toggle dnd-schedule nfc-wifi vpn-auto)
+    ITEMS+=(tailscale-toggle dnd-schedule nfc-wifi vpn-auto bt-sbc-xq)
 fi
 SPECS=$(mktemp -d)
 trap 'rm -rf "$SPECS" "$DIST/build" "$DIST/buildroot"' EXIT

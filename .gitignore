@@ -1,6 +1,4 @@
-# Not published: bt-sbc-xq (local only).
 # orig/ and new/ hold full copies of Sailfish OS files.
 */orig/
 */new/
-bt-sbc-xq/
 dist/
